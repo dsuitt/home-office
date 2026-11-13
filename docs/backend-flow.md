@@ -7,110 +7,126 @@ How money data moves through the system, what is stored, and which endpoints the
 ```mermaid
 flowchart LR
   subgraph Sources
-    CSV[CSV / OFX statements]
-    PLAID[Plaid - Phase 3]
-    DUB[Dubsado / Pic-Time - later]
+    PLAID[Plaid: studio banks]
+    XERO[Xero: reconciled history]
+    MON[Monarch: home accounts]
+    CSV[CSV / OFX fallback]
   end
-  subgraph GCP
-    RUN[Cloud Run: FastAPI app]
-    JOBS[Cloud Run Jobs: sync and digest]
+  subgraph GCP project
+    GW[API Gateway]
+    RUN[Cloud Run: FastAPI, private]
+    JOBS[Cloud Run Jobs: sync, digest]
     SCHED[Cloud Scheduler]
-    SQL[(Cloud SQL Postgres)]
+    FS[(Firestore)]
     SM[Secret Manager]
-    GCS[(Cloud Storage: uploads, receipts, PDFs)]
-    BQ[(BigQuery - Phase 4)]
+    GCS[(Cloud Storage)]
+    BQ[(BigQuery, optional)]
   end
+  AUTH[Firebase Auth: Google sign-in]
   CLAUDE[Claude API]
   UI[Studio and Home dashboards]
 
-  CSV --> RUN
-  PLAID --> JOBS
-  DUB --> JOBS
+  UI -- sign in --> AUTH
+  UI -- ID token --> GW --> RUN
+  CSV --> GW
   SCHED --> JOBS
-  RUN <--> SQL
-  JOBS <--> SQL
-  RUN --> GCS
-  RUN --> CLAUDE
-  JOBS --> CLAUDE
+  PLAID --> JOBS
+  XERO --> JOBS
+  MON --> JOBS
+  RUN <--> FS
+  JOBS <--> FS
   SM --> RUN
   SM --> JOBS
-  SQL -. nightly export .-> BQ
-  UI <--> RUN
+  RUN --> GCS
+  RUN --> CLAUDE
+  FS -. nightly export .-> BQ
 ```
+
+## Data sources
+
+### Studio: Plaid (Trial plan)
+
+- **Coverage check first.** Before linking, look up each institution with Plaid's institution search in the free Sandbox environment and confirm it supports the Transactions product. Payment apps (PayPal, Venmo, Square) are the usual gaps; those stay on CSV, or Stripe's own free API if needed.
+- **Linking.** A one-time "Connect a bank" page uses Plaid Link. Each bank login becomes one Plaid Item, which covers every account at that bank. The Trial allows 10 Items, and removing an Item doesn't free a slot, so we link each bank once and use Plaid's update mode to re-authenticate instead of re-linking.
+- **History.** Request the longest history at link time (up to 24 months) so it overlaps everything already reconciled in Xero.
+- **Sync.** Nightly `/transactions/sync` per Item with a saved cursor. Added, modified and removed transactions are all applied, so pending charges that settle don't duplicate. No webhooks needed: nightly polling is simpler and enough.
+
+### Studio: Xero reconciled history
+
+Xero's API only returns bank lines she has already reconciled; unreconciled feed lines aren't available. That's exactly what we want from it: her finished work.
+
+1. **Connect.** A Xero app on the free Starter tier, OAuth 2.0 with read-only accounting scopes (exact scope names per Xero's current docs) and a refresh token kept in Secret Manager.
+2. **Map once, with her.**
+   - Xero bank accounts → our accounts (matched by account number, confirmed by her).
+   - Xero chart of accounts codes → our studio categories. A one-time mapping screen. Most map one-to-one; anything unclear gets a plain question.
+3. **Pull.**
+   - `Accounts`: chart of accounts and bank accounts.
+   - `BankTransactions` where reconciled: spend and receive money. Each line item's account code becomes a category; several line items become a split.
+   - `BankTransfers`: become matched transfers.
+   - `Payments`: invoice and bill payments that were reconciled.
+   - Later runs use `If-Modified-Since`, so only new or changed records come back.
+4. **Store.** Imported as `done`, `source = xero`, with the Xero ID kept for traceability. Never re-sorted by our rules.
+5. **Learn.** For each merchant/contact seen at least 3 times and categorized the same way at least 90% of the time, propose a rule. She sees the list once ("Adobe → Software & subscriptions, 14 times") and approves or edits it. Nothing is applied without that approval.
+6. **"Reconciled through" date.** Per account, the latest reconciled line's date. Shown in the Snapshot tab so she can see where Xero's work ends and the tool's begins.
+7. **While she still uses Xero.** The pull runs nightly. If she reconciles something in Xero, our copy picks up her category instead of asking again. After the CPA decision, this either stops (Xero cancelled) or reverses direction (we push sorted transactions into Xero).
+
+### Overlap: Plaid and Xero describe the same money
+
+Plaid's history backfill covers months Xero already has, so every Plaid transaction is checked against Xero first:
+
+- **Match** on the same account, the exact amount, and a date within ±3 days, with merchant-name similarity as the tie-breaker. Closest date wins, and each line can match only once.
+- **Matched:** the Plaid transaction takes the Xero category and status `done`, links to the Xero ID, and is never shown to her.
+- **In Plaid, in a reconciled period, but not in Xero:** flagged for a quick look. It's usually something skipped or deleted in Xero.
+- **In Xero but not in Plaid:** kept as is, for example cash or manual entries.
+- **After the "reconciled through" date:** goes through the normal pipeline below.
+
+### Home: Monarch
+
+- Nightly job using `monarchmoneycommunity` (unofficial). Credentials and the MFA secret are kept in Secret Manager, and the session token is cached to avoid repeated logins.
+- Pulls accounts, balances and transactions. Monarch's own category comes along as a suggestion, mapped to our home categories through a one-time mapping, the same way as Xero.
+- If the library breaks, the job reports it in the weekly digest, and the fallback is Monarch's CSV download uploaded into the same import step.
 
 ## Pipeline, step by step
 
-Each new transaction moves through these steps once. A transaction's **status** is one of
-`auto` (sorted by the tool), `suggested` (a best guess she confirms), `needs_you` (a question for her) or `done` (she answered).
-"Sorted" means `auto` or `done`.
+Each new transaction moves through these steps once. Its **status** is one of `auto` (sorted by the tool), `suggested` (a best guess she confirms), `needs_you` (a question for her) or `done` (answered by her, or imported from Xero).
 
-1. **Ingest.** A CSV/OFX upload or a Plaid sync produces raw rows. Each source is an adapter with the same output shape: account, date, description, signed amount (positive = money in). Each bank gets a saved column mapping (date column, description column, either one amount column or separate debit/credit columns, and whether charges are exported as positive numbers).
-2. **Normalize.** Clean the merchant name: `TARGET 00012` → `TARGET`, `ADOBE *CREATIVE CLOUD` → `ADOBE CREATIVE CLOUD`. Also flag rows that look like transfers (`PAYMENT THANK YOU`, `TRANSFER TO …`).
-3. **Dedupe.** Hash of account + date + amount + description + occurrence number within the file. Re-importing the same statement is harmless.
-4. **Transfer matching.** Pair an outflow and an inflow of the same amount in two of her accounts, within ±3 days, choosing the closest dates first. The pair type decides what happens:
-   - **Card payment** (checking → credit card): both sides are excluded from spending, so purchases aren't counted twice.
-   - **Same-book transfer** (checking → savings): excluded from spending. If the destination account is tied to a goal category (Tax Savings → "Tax savings"), the outflow counts toward that set-aside.
-   - **Owner's-pay bridge** (studio checking → home checking): the studio side is categorized as **Owner's pay to home** (a Set-aside, not a business expense). The home side is categorized as **Studio owner's pay** (income). Both are marked `auto` and linked, so the two books always agree.
-5. **Rules.** Her saved answers, such as "merchant contains ADOBE, money out → Software & subscriptions." A rule can also say which book a merchant belongs to, which settles mixed-card questions. The most specific (longest) pattern wins. A match sets status `auto`.
-6. **Suggestions.** For anything still unsorted:
-   - First, her past answers for the same merchant that weren't saved as rules.
-   - Second, the Claude API, given the merchant, amount, date, account, her category list and context (calendar events, Dubsado invoices when available). It returns a category, a confidence and a one-line reason.
-   - A suggestion sets `suggested`. Low confidence, or a mixed account with no book known, sets `needs_you` with a plain question ("Studio or home?").
-   - **Suggestions never auto-apply.** Only rules do.
-7. **Review queue.** She works through `needs_you` and `suggested` items (cards, rows or the paper packet). Each answer can:
-   - Set a category (which also sets the book).
-   - Split the transaction across categories and/or books. The amounts must add up to the total.
-   - Optionally "always do this," which creates a rule.
-8. **Month close checks** (per book):
-   - Every transaction in the month is sorted.
-   - Every transaction flagged as a transfer is matched or explained.
-   - Each account's computed balance (opening balance + transactions) equals the statement closing balance she enters, or that Plaid reports.
-   - Optional: receipts attached for anything over a threshold.
-   When everything passes, the month is closed and locked. Edits after that require reopening the month, which is logged.
-9. **Reports.**
-   - Plan vs. actual by category and bucket.
-   - "Left to assign" (zero-based: planned income minus all planned categories).
-   - Studio P&L and 30% tax set-aside estimate.
-   - Slow-season reserve balance.
-   - "Saving for" progress and projected purchase month.
-   - Net worth (home).
-   - Quarterly letter (LLM-written from the computed numbers only).
+1. **Ingest.** Every source adapter (Plaid, Xero, Monarch, CSV/OFX) produces the same shape: account, date, description, signed amount (+ is money in), external ID, and optional source category.
+2. **Normalize.** Clean the merchant name (`ADOBE *CREATIVE CLOUD` → `ADOBE CREATIVE CLOUD`) and flag rows that look like transfers.
+3. **Dedupe.** The document ID is a hash of source + external ID, or of account + date + amount + description for CSVs. Re-importing is harmless.
+4. **Xero overlap.** Studio transactions dated on or before the account's "reconciled through" date are matched against Xero lines as described above.
+5. **Transfer matching.** Pair an outflow and an inflow of the same amount in two of our accounts within ±3 days.
+   - **Card payment** (checking → card): excluded from spending, so purchases aren't counted twice.
+   - **Same-book transfer** (checking → savings): excluded from spending. If the destination is tied to a goal (Tax Savings), it counts toward that set-aside.
+   - **Owner's-pay bridge** (studio checking → home checking): the studio side becomes **Owner's pay to home** (a set-aside, not an expense). The home side becomes **Studio owner's pay** (income). Both are linked and `auto`. This is the one place where Plaid (studio) and Monarch (home) data meet.
+6. **Rules.** Her approved rules (including the ones learned from Xero). The most specific pattern wins. A match sets `auto`.
+7. **Suggestions.** For anything still unsorted: her past answers for the same merchant, then Monarch's category (home), then the Claude API. A suggestion sets `suggested`. Low confidence, or a mixed card with no book known, sets `needs_you` with a plain question. **Suggestions never auto-apply.**
+8. **Review queue.** She answers `needs_you` and confirms `suggested`. An answer can split a transaction across categories or books, and can optionally become a rule.
+9. **Month close** (per book): every transaction sorted; every transfer matched; each account's computed balance equals the balance Plaid or Monarch reports for month end (or the statement balance she types in for CSV accounts). When everything passes, the month is locked. Reopening is logged.
+10. **Summaries.** After every change, recompute that book's month summary document (totals by category and bucket). Dashboards read these small documents instead of every transaction, which keeps Firestore reads tiny.
 
-## Data model
+## Data model (Firestore)
 
-```mermaid
-erDiagram
-  BOOK ||--o{ BUCKET : has
-  BOOK ||--o{ CATEGORY : has
-  BUCKET ||--o{ CATEGORY : groups
-  BOOK ||--o{ ACCOUNT : "owns (null = mixed)"
-  ACCOUNT ||--o{ TRANSACTION : has
-  TRANSACTION ||--o{ SPLIT : "may split into"
-  TRANSACTION }o--o| TRANSFER : "side of"
-  CATEGORY ||--o{ TRANSACTION : categorizes
-  CATEGORY ||--o{ RULE : target
-  CATEGORY ||--o{ PLAN_AMOUNT : budgeted
-  BOOK ||--o{ SAVINGS_GOAL : has
-  BOOK ||--o{ MONTH_CLOSE : has
-  ACCOUNT ||--o{ STATEMENT_BALANCE : has
-```
+All money is stored as **integer cents**, signed from the account's point of view (+ in, − out; for cards, − is a charge).
 
-| Table | Key fields |
-|---|---|
-| **book** | key (`home`, `studio`), name |
-| **bucket** | book, key (`ess`, `non`, `goal`), name: Home = Essentials / Non-essentials / Financial goals; Studio = Running costs / Growth / Set-asides |
-| **category** | book, bucket (null for income), name, kind (`income`, `expense`, `goal`), schedule_c_line (studio only) |
-| **account** | name, type (`checking`, `savings`, `credit_card`, `loan`, `investment`), book (null = mixed), last4, goal_category (e.g. Tax Savings → Tax savings), opening_balance, opening_date, source (`csv`, `plaid`) |
-| **transaction** | account, posted_on, raw_description, merchant, amount_cents (signed), dedupe_hash (unique), status, book, category, transfer_id, looks_like_transfer, suggestion (category, confidence, reason), note |
-| **split** | transaction, book, category, amount_cents |
-| **transfer** | out_txn, in_txn, kind (`card_payment`, `transfer`, `owners_pay`) |
-| **rule** | pattern, direction (in / out / any), book, category, created_from_txn, hit_count |
-| **plan_amount** | category, month (`YYYY-MM`), amount_cents. Studio plans vary by month with the season. |
-| **savings_goal** | book, name, cost, saved, monthly_contribution, priority, purchased_on, note. Projected purchase month = this month + ceil((cost − saved) / monthly). |
-| **statement_balance** | account, month, closing_balance_cents |
-| **month_close** | book, month, closed_at, checklist snapshot (JSON), reopened_at |
+| Collection | Document ID | Key fields |
+|---|---|---|
+| `books` | `home`, `studio` | name, buckets (key, name, order) |
+| `categories` | auto | book, bucket, name, kind (`income` / `expense` / `goal`), schedule_c_line (studio), archived |
+| `accounts` | auto | name, type (`checking` / `savings` / `credit_card` / `loan` / `investment`), book (or `mixed`), last4, source (`plaid` / `monarch` / `csv`), external IDs (Plaid account, Xero account, Monarch account), goal_category, reconciled_through |
+| `transactions` | hash | account, posted_on, month (`YYYY-MM`), merchant, raw_description, amount_cents, book, category, status, splits (embedded list of book + category + amount), transfer_id, source, external IDs (Plaid / Xero / Monarch), suggestion (category, confidence, reason), note |
+| `transfers` | auto | out_txn, in_txn, kind (`card_payment` / `transfer` / `owners_pay`) |
+| `rules` | auto | pattern, direction, book, category, origin (`answer` / `xero_history`), approved, hit_count |
+| `plans` | `{book}_{YYYY-MM}` | amounts: map of category → cents. Studio plans vary by season. |
+| `savings_goals` | auto | book, name, cost, saved, monthly, priority, purchased_on, note. Ready month = this month + ceil((cost − saved) / monthly). |
+| `statements` | `{account}_{YYYY-MM}` | closing_balance_cents, source (`plaid` / `monarch` / `typed`) |
+| `month_closes` | `{book}_{YYYY-MM}` | closed_at, checklist snapshot, reopened_at |
+| `summaries` | `{book}_{YYYY-MM}` | totals by category and bucket, counts by status |
+| `mappings` | `xero_accounts`, `xero_categories`, `monarch_categories` | source ID → our ID |
+| `sync_state` | per source / Plaid Item | cursor, last run, last error, item status (`ok` / `needs_reauth`) |
 
-Money is stored as **integer cents**. The amount sign is from the account's point of view: + is money in, − is money out. For cards, − is a charge.
+**Indexes:** `transactions` on (book, month, status) and (account, posted_on).
+
+**Secrets are never stored in Firestore.** Plaid access tokens, the Xero refresh token and Monarch credentials live in Secret Manager.
 
 ### Studio categories → Schedule C (starting point for the CPA to confirm)
 
@@ -127,32 +143,27 @@ Money is stored as **integer cents**. The amount sign is from the account's poin
 | Travel (lodging, flights) | 24a |
 | Meals with clients | 24b (50%) |
 | Phone & internet | 25 |
-| Owner's pay, Tax savings, Solo 401(k), Saving for, Slow-season reserve | Not deductible on Schedule C. These are set-asides. |
+| Owner's pay, Tax savings, Solo 401(k), Saving for, Slow-season reserve | Not deductible. These are set-asides. |
 
-## API surface (Phase 1)
+## API surface (through API Gateway, all require sign-in)
 
-- `GET /books`, `GET /categories?book=`, and create/update/archive categories
-- `GET /accounts`, `POST /accounts`, `PATCH /accounts/{id}`
-- `POST /accounts/{id}/import`: upload CSV/OFX, run the pipeline, return counts (imported, duplicates, auto, suggested, needs_you)
-- `GET /review?book=&month=`: the queue (`needs_you` first, then `suggested`)
-- `POST /transactions/{id}/answer` (category, optional "make rule")
-- `POST /transactions/{id}/confirm` (accept suggestion)
-- `POST /transactions/{id}/split` (parts)
-- `GET /transactions?book=&month=&status=`: the log view
-- `GET /rules`, `DELETE /rules/{id}`
-- `GET /plan/{book}/{month}`, `PUT /plan/{book}/{month}`, `POST /plan/{book}/{month}/copy-from/{month}`
-- `GET /reports/{book}/{month}/plan-vs-actual`, `GET /reports/{book}/{year}/annual`, `GET /reports/studio/{year}/pnl`, `GET /reports/studio/{year}/taxes`, `GET /reports/home/net-worth`
-- `GET/POST/PATCH/DELETE /savings-goals`, `GET /savings-goals/progress?book=`
-- `PUT /accounts/{id}/statements/{month}` (closing balance)
-- `GET /close/{book}/{month}` (checklist), `POST /close/{book}/{month}`, `POST /close/{book}/{month}/reopen`
+- **Setup:** `GET /books`, `GET/POST/PATCH /categories`, `GET/POST/PATCH /accounts`
+- **Connections:** `POST /plaid/link-token`, `POST /plaid/exchange` (finish linking a bank), `GET /connections` (status of every source), `POST /xero/connect` and `GET /xero/callback` (OAuth), `GET/PUT /mappings/{name}`, `GET /rules/proposed`, `POST /rules/proposed/approve`
+- **Import:** `POST /accounts/{id}/import` (CSV/OFX fallback)
+- **Review:** `GET /review?book=&month=`, `POST /transactions/{id}/answer`, `POST /transactions/{id}/confirm`, `POST /transactions/{id}/split`, `GET /transactions?book=&month=&status=`
+- **Rules:** `GET /rules`, `DELETE /rules/{id}`
+- **Plans:** `GET/PUT /plan/{book}/{month}`, `POST /plan/{book}/{month}/copy-from/{month}`
+- **Saving for:** `GET/POST/PATCH/DELETE /savings-goals`
+- **Reports:** `GET /reports/{book}/{month}`, `GET /reports/{book}/{year}/annual`, `GET /reports/studio/{year}/taxes`, `GET /reports/home/net-worth`
+- **Close:** `GET /close/{book}/{month}`, `POST /close/{book}/{month}`, `POST /close/{book}/{month}/reopen`
+- **Export:** `GET /export/{book}/{year}.csv` (no lock-in)
 
 ## Scheduled jobs (Cloud Scheduler → Cloud Run Jobs)
 
+Cloud Scheduler gives 3 free jobs, so the nightly work runs as one job with steps.
+
 | Job | When | What |
 |---|---|---|
-| `sync-banks` | Nightly (Phase 3) | Plaid pull → pipeline |
-| `month-start` | 1st of the month, morning | Copy last month's plan as a draft; tell her "September is ready to close: 8 items" |
-| `weekly-digest` | Her chosen day/time | One message: items waiting, safe-to-spend, upcoming bills |
-| `tax-reminders` | 2 weeks before Apr 15, Jun 15, Sep 15, Jan 15 | Estimated payment amount and tax savings balance |
-| `export-bq` | Nightly (Phase 4) | Copy tables to BigQuery |
-| `backup-check` | Weekly | Confirm Cloud SQL backups exist and restore-test monthly |
+| `nightly-sync` | Every night | Xero pull (while in use) → Plaid sync → Monarch sync → pipeline → summaries. Records failures in `sync_state`. |
+| `month-start` | 1st of the month | Draft next month's plan from last month; tell her "October is ready to close: 8 items." |
+| `weekly-digest` | Her chosen day and time | Items waiting, safe-to-spend, upcoming bills, any connection that needs re-linking, and tax reminders in the two weeks before Apr 15, Jun 15, Sep 15 and Jan 15. |
