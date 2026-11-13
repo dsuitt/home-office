@@ -1,0 +1,583 @@
+<title>Studio Money Dashboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600&family=Figtree:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: one workbook, two books (Home / Studio) switched at the top; spreadsheet-style tabs pinned to the bottom like Google Sheets; every section opens with a navy header bar, as in the template she likes. */
+:root{
+  --bg:#edf1f6; --surface:#ffffff; --zebra:#f6f8fb; --ink:#1b2533; --muted:#5a6878; --line:#d3dce7;
+  --navy:#1f3b5c; --navy-ink:#ffffff; --sub:#dbe7f3; --sub-ink:#1f3b5c;
+  --c1:#1f3b5c; --c2:#3d78b0; --c3:#8fb6dc; --c4:#c9dcef; --c5:#4f9d69; --c6:#c98a1a;
+  --good:#2e7d4f; --good-bg:#dcf0e3; --bad:#b23b3b; --bad-bg:#f8e1df; --warn:#9a6a10; --warn-bg:#fbefd6;
+  --serif:"Playfair Display", Georgia, "Times New Roman", serif;
+  --body:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f141b; --surface:#18202b; --zebra:#1c2531; --ink:#e5ebf2; --muted:#98a6b6; --line:#2a3646;
+  --navy:#2b5683; --navy-ink:#ffffff; --sub:#1f3044; --sub-ink:#cfe0f3;
+  --c1:#a9cdf0; --c2:#5f9bd3; --c3:#3d6c9c; --c4:#2a4766; --c5:#6fcf97; --c6:#e5b25c;
+  --good:#6fcf97; --good-bg:#173526; --bad:#f08a80; --bad-bg:#3a2020; --warn:#e5b25c; --warn-bg:#3a2d16; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f141b; --surface:#18202b; --zebra:#1c2531; --ink:#e5ebf2; --muted:#98a6b6; --line:#2a3646;
+  --navy:#2b5683; --navy-ink:#ffffff; --sub:#1f3044; --sub-ink:#cfe0f3;
+  --c1:#a9cdf0; --c2:#5f9bd3; --c3:#3d6c9c; --c4:#2a4766; --c5:#6fcf97; --c6:#e5b25c;
+  --good:#6fcf97; --good-bg:#173526; --bad:#f08a80; --bad-bg:#3a2020; --warn:#e5b25c; --warn-bg:#3a2d16; color-scheme:dark}
+
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:0 calc(90px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:1180px;margin:0 auto}
+p{margin:0} h1,h2,h3{margin:0;text-wrap:balance}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+button,select,textarea,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--c2);outline-offset:2px}
+
+header.top{display:flex;flex-wrap:wrap;gap:14px 24px;align-items:flex-end;justify-content:space-between;padding-top:28px;margin-bottom:18px}
+header.top h1{font-family:var(--serif);font-style:italic;font-weight:600;font-size:clamp(28px,4.6vw,42px);letter-spacing:.01em;color:var(--navy)}
+:root[data-theme="dark"] header.top h1{color:var(--c1)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) header.top h1{color:var(--c1)}}
+header.top p{max-width:64ch;color:var(--muted);margin-top:6px}
+.sample{display:inline-block;font-size:12px;font-weight:700;color:var(--warn);background:var(--warn-bg);padding:3px 10px;border-radius:999px;margin-bottom:8px}
+.other{display:inline-block;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:9px 14px;font-weight:700;color:var(--ink);text-decoration:none}
+.other:hover{border-color:var(--c2)}
+.wish{display:grid;grid-template-columns:auto minmax(0,1.6fr) repeat(3,minmax(0,.8fr)) minmax(0,1fr) auto;gap:10px 14px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
+.wish:last-child{border-bottom:0}
+.wish .nm{font-weight:700;font-size:15px}
+.wish .lbl{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.wish input[type=number]{width:90px;padding:5px 7px;border:1px solid var(--line);border-radius:5px;background:var(--surface)}
+.wish .ord{display:grid;gap:2px}
+.wish .ord button{border:1px solid var(--line);background:var(--surface);border-radius:4px;width:26px;height:20px;font-size:11px;cursor:pointer;line-height:1;padding:0}
+.ready{font-weight:800}
+.ready.now{color:var(--good)}
+.ready.never{color:var(--warn)}
+@media (max-width:760px){.wish{grid-template-columns:auto minmax(0,1fr) minmax(0,1fr)}.wish .span{grid-column:2/-1}}
+form.add{display:grid;grid-template-columns:minmax(0,2fr) repeat(3,minmax(0,1fr)) auto;gap:8px;align-items:end}
+form.add label{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--muted)}
+form.add input{padding:7px 8px;border:1px solid var(--line);border-radius:5px;background:var(--surface);min-width:0}
+@media (max-width:760px){form.add{grid-template-columns:1fr 1fr}}
+
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);
+  padding:8px max(16px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.tabs .row{max-width:1180px;margin:0 auto;display:flex;gap:4px;overflow-x:auto;scrollbar-width:thin}
+.tabs button{flex:none;border:1px solid transparent;background:transparent;padding:8px 12px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;color:var(--muted);white-space:nowrap}
+.tabs button[aria-current="true"]{background:var(--sub);color:var(--sub-ink);border-color:var(--line)}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;overflow:hidden;min-width:0;display:flex;flex-direction:column}
+.bar-h{background:var(--navy);color:var(--navy-ink);text-transform:uppercase;letter-spacing:.07em;font-weight:800;font-size:13px;text-align:center;padding:9px 12px}
+.bar-s{background:var(--sub);color:var(--sub-ink);text-transform:uppercase;letter-spacing:.06em;font-weight:700;font-size:11.5px;text-align:center;padding:6px 10px}
+.pad{padding:14px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.kpi{border:1px solid var(--line);border-radius:4px;padding:10px 8px;text-align:center}
+.kpi .l{font-size:11.5px;color:var(--muted);font-weight:600}
+.kpi .v{font-size:17px;font-weight:800}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{background:var(--sub);color:var(--sub-ink);font-size:11.5px;font-weight:700;text-align:left;padding:6px 8px;white-space:nowrap;border-bottom:1px solid var(--line)}
+td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:nth-child(even) td{background:var(--zebra)}
+td.r,th.r{text-align:right;white-space:nowrap}
+tr.tot td{font-weight:800;background:var(--sub)!important;color:var(--sub-ink)}
+tr.sub td{font-weight:700;background:var(--zebra)}
+.pos{background:var(--good-bg)!important;color:var(--good)}
+.neg{background:var(--bad-bg)!important;color:var(--bad)}
+.pill{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.p-auto{background:var(--zebra);color:var(--muted);border:1px solid var(--line)}
+.p-sug{background:var(--sub);color:var(--sub-ink)}
+.p-ask{background:var(--warn-bg);color:var(--warn)}
+.p-ok{background:var(--good-bg);color:var(--good)}
+.p-bridge{background:var(--sub);color:var(--c2);border:1px dashed var(--c2)}
+.prog{height:9px;background:var(--zebra);border:1px solid var(--line);border-radius:99px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--c2)}
+.note{font-size:13px;color:var(--muted)}
+.callout{background:var(--sub);color:var(--sub-ink);border-radius:6px;padding:10px 12px;font-size:13px}
+.panel svg{max-height:280px}
+svg text{fill:var(--muted);font-family:var(--body);font-size:11px}
+svg .gridl{stroke:var(--line)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+select.cat{font-size:12.5px;padding:4px 6px;border:1px solid var(--line);border-radius:5px;background:var(--surface);max-width:210px}
+tr.ask td{background:var(--warn-bg)!important}
+.desc{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:12px}
+.months{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.mon{border:1px solid var(--line);border-radius:4px;overflow:hidden;font-size:12.5px}
+.mon .bar-s{text-align:left}
+.mon.now{outline:2px solid var(--c2)}
+.mon ul{list-style:none;margin:0;padding:6px 8px;display:grid;gap:3px;min-height:58px}
+.mon li{display:flex;justify-content:space-between;gap:6px}
+.check{display:grid;gap:7px;margin:0;padding:0;list-style:none}
+.check li{display:flex;gap:9px;align-items:center}
+.box{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--good);background:var(--good);color:var(--surface);display:grid;place-items:center;font-size:12px;font-weight:800;flex:none}
+textarea{width:100%;min-height:54px;border:1px solid var(--line);border-radius:5px;padding:7px 9px;background:var(--surface);resize:vertical;box-sizing:border-box}
+.q{display:grid;gap:5px}
+.q label{font-weight:600;font-size:13px}
+.adj{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:6px;padding:10px 12px}
+.adj .btns{display:flex;gap:6px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 10px;font-weight:600;font-size:12.5px;cursor:pointer}
+.btn.on{background:var(--navy);color:var(--navy-ink);border-color:var(--navy)}
+.zero{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:center;padding:12px;border:2px solid var(--good);border-radius:6px;background:var(--good-bg);color:var(--good);font-weight:800;font-size:15px}
+.ann td:first-child,.ann th:first-child{position:sticky;left:0;z-index:1;background:var(--surface);min-width:150px}
+.ann tr.tot td:first-child{background:var(--sub)}
+.ann th.m{text-align:center;background:var(--navy);color:var(--navy-ink)}
+.ann td{white-space:nowrap;font-size:12px;padding:5px 7px}
+.ann td.sep,.ann th.sep{border-left:2px solid var(--line)}
+.diff-legend{display:flex;gap:12px;font-size:12px;flex-wrap:wrap}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <div>
+    <span class="sample">Sample data, made up for this mockup</span>
+    <h1>Studio Money Dashboard</h1>
+    <p>Same tabs as the budget template you liked, built for the studio: plan, taxes, profit and what you&apos;re saving for. Transactions fill themselves in from your accounts, and you only answer what the tool can't figure out. Use the tabs at the bottom.</p>
+  </div>
+  <a class="other" href="https://claude.ai/artifact/6pL9KgeXNXPtfPiQsAQf2D">Home dashboard →</a>
+</header>
+<main id="app"></main>
+</div>
+<nav class="tabs" aria-label="Sheets"><div class="row" id="tabs"></div></nav>
+
+<script>
+const $=(s,el=document)=>el.querySelector(s);
+const fmt=(n,d=0)=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const k=n=>n===0?'$0':(n<0?'−':'')+'$'+(Math.abs(n)>=1e6?(Math.abs(n)/1e6).toFixed(2)+'M':(Math.abs(n)/1000).toFixed(Math.abs(n)%1000===0?0:1)+'k');
+const pct=(a,b)=>b?Math.round(a/b*100)+'%':'—';
+const sum=a=>a.reduce((x,y)=>x+(y||0),0);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MF=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const CUR=9; // October is the last closed month
+let seed=11; const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+const C=['var(--c1)','var(--c2)','var(--c3)','var(--c5)','var(--c6)','var(--c4)','var(--muted)'];
+
+/* ---------- chart helpers ---------- */
+function niceMax(v){if(v<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(v)));const m=v/p;return (m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*p;}
+function bars(labels,series,colors,h=210){
+  const W=640,H=h,L=46,R=8,T=10,B=26,max=niceMax(Math.max(...series.flat().map(v=>v||0)));
+  const y=v=>T+(H-T-B)*(1-v/max),bw=(W-L-R)/labels.length;
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="bar chart">`;
+  for(let i=0;i<=4;i++){const v=max*i/4;s+=`<line class="gridl" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${k(v)}</text>`;}
+  labels.forEach((lb,i)=>{const n=series.length,gw=bw*.72,w=gw/n,x0=L+i*bw+bw*.14;
+    series.forEach((ser,j)=>{const v=ser[i];if(v==null)return;s+=`<rect x="${x0+j*w}" y="${y(Math.max(v,0))}" width="${Math.max(w-2,1)}" height="${y(0)-y(Math.max(v,0))}" fill="${colors[j]}"/>`;});
+    s+=`<text x="${L+i*bw+bw/2}" y="${H-8}" text-anchor="middle">${lb}</text>`;});
+  return s+'</svg>';
+}
+function line(labels,series,colors,{h=210,min=0,dash=[]}={}){
+  const W=640,H=h,L=52,R=14,T=12,B=26,all=series.flat().filter(v=>v!=null);
+  const lo=Math.min(min,...all),hi=niceMax(Math.max(...all)-lo)+lo;
+  const x=i=>L+(W-L-R)*i/(labels.length-1),y=v=>T+(H-T-B)*(1-(v-lo)/(hi-lo));
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="line chart">`;
+  for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4;s+=`<line class="gridl" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${k(Math.round(v))}</text>`;}
+  labels.forEach((lb,i)=>s+=`<text x="${x(i)}" y="${H-8}" text-anchor="middle">${lb}</text>`);
+  series.forEach((ser,j)=>{const pts=ser.map((v,i)=>v==null?null:[x(i),y(v)]).filter(Boolean);if(!pts.length)return;
+    const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+    if(j===0&&!dash[0])s+=`<path d="${d} L${pts.at(-1)[0]} ${y(Math.max(lo,0))} L${pts[0][0]} ${y(Math.max(lo,0))} Z" fill="${colors[j]}" opacity=".13"/>`;
+    s+=`<path d="${d}" fill="none" stroke="${colors[j]}" stroke-width="2.4" ${dash[j]?'stroke-dasharray="6 5"':''}/>`;
+    pts.forEach(p=>{if(!dash[j])s+=`<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="${colors[j]}"/>`;});});
+  return s+'</svg>';
+}
+function donut(rows,size=170,center=''){
+  const tot=sum(rows.map(r=>Math.max(r[1],0))),r=size/2-14,c=2*Math.PI*r;let off=0;
+  let s=`<svg viewBox="0 0 ${size} ${size}" width="${size}" style="max-width:100%" role="img" aria-label="donut chart"><g transform="rotate(-90 ${size/2} ${size/2})">`;
+  rows.forEach((row,i)=>{const len=Math.max(row[1],0)/tot*c;s+=`<circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${C[i%C.length]}" stroke-width="24" stroke-dasharray="${Math.max(len-1.5,0)} ${c}" stroke-dashoffset="${-off}"/>`;off+=len;});
+  return s+`</g><text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" style="font-size:16px;font-weight:800;fill:var(--ink)">${center}</text></svg>`;
+}
+const donutBlock=(rows,center)=>`<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:center">${donut(rows,170,center)}<div class="legend" style="display:grid;gap:4px">${rows.map((r,i)=>`<span><i style="background:${C[i%C.length]}"></i>${r[0]} · ${pct(Math.max(r[1],0),sum(rows.map(x=>Math.max(x[1],0))))}</span>`).join('')}</div></div>`;
+const hbar=(rows,color='var(--c2)')=>{const max=Math.max(...rows.map(r=>Math.abs(r[1])),1);return `<div class="grid" style="gap:8px">${rows.map(([n,v])=>`<div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.8fr) auto;gap:10px;align-items:center;font-size:12.5px"><span>${n}</span><div class="prog"><i style="width:${Math.abs(v)/max*100}%;background:${color}"></i></div><span class="num">${fmt(v)}</span></div>`).join('')}</div>`;};
+const panel=(title,body,pad=true)=>`<section class="panel"><div class="bar-h">${title}</div>${pad?`<div class="pad">${body}</div>`:body}</section>`;
+
+/* ---------- book model ---------- */
+function line_(name,plan,amp=0,type,extra={}){const p=Array.isArray(plan)?plan:Array(12).fill(plan);const a=p.map((v,i)=>i>CUR?null:(amp?Math.round(v*(1+(rnd()*2-1)*amp)):v));return {name,plan:p,act:a,type,...extra};}
+
+function homeBook(){
+  seed=11;
+  const income=[line_('Your paycheck (net)',7400,0,'inc'),line_('Studio owner’s pay',4500,0,'inc',{bridge:true})];
+  const ess=[line_('Mortgage',2400),line_('Utilities',320,.2),line_('Groceries',900,.15),line_('Insurance',280),line_('Car & gas',450,.2),line_('Phone',95),line_('Health',200,.5),line_('Household',150,.3),line_('Subscriptions',90,.15)];
+  const non=[line_('Eating out',350,.25),line_('Coffee',60,.3),line_('Clothes',150,.6),line_('Beauty & self-care',120,.4),line_('Fun & activities',150,.5),line_('Travel',300,.7),line_('Gifts',150,.6),line_('Misc',100,.6)];
+  const eo=non[0]; eo.act[7]=392; eo.act[8]=405; eo.act[9]=418;
+  const goal=[line_('Emergency fund',1000,0,'save'),line_('Italy trip, June',650,0,'save'),line_('New car fund',500,0,'save'),line_('Roth IRAs (both)',1166,0,'invest'),line_('Brokerage',1300,0,'invest'),line_('Car loan',485,0,'debt'),line_('Student loan',534,0,'debt')];
+  return {key:'home',name:'Home',income,buckets:[
+    {key:'ess',name:'Essentials',hint:'Bills and needs',lines:ess},
+    {key:'non',name:'Non-essentials',hint:'Wants and fun',lines:non},
+    {key:'goal',name:'Financial goals',hint:'Savings, investing, debt payoff',lines:goal}]};
+}
+function studioBook(){
+  seed=23;
+  const REV=[4200,6100,8400,11800,17500,19200,14600,16900,21300,22800,9500,5000];
+  const PLAN=REV.map((v,i)=>Math.round(v*(0.9+((i*7)%5)*0.04)/100)*100);
+  const split=(arr,f)=>arr.map(v=>Math.round(v*f));
+  const mkInc=(n,f,extra)=>({name:n,plan:split(PLAN,f),act:split(REV,f).map((v,i)=>i>CUR?null:v),type:'inc',...extra});
+  const income=[mkInc('Weddings',.70),mkInc('Sessions',.18),mkInc('Second shooting for others',.08),mkInc('Print & album sales',.04)];
+  const totI=i=>sum(income.map(l=>l.plan[i])), totA=i=>sum(income.map(l=>l.act[i]));
+  // build each line from monthly income (plan uses plan income, actual uses actual income with a little noise)
+  const f=(name,fn,amp,type,extra)=>{const plan=M.map((_,i)=>Math.round(fn(totI(i),i)));const act=M.map((_,i)=>i>CUR?null:Math.round(fn(totA(i),i)*(1+(amp?(rnd()*2-1)*amp:0))));return {name,plan,act,type,...extra};};
+  const ess=[f('Second shooters',I=>I*.09,.15),f('Albums & prints',I=>I*.06,.2),f('Software & subscriptions',()=>530,0),f('Insurance',()=>165,0),f('Phone & internet',()=>95,0),f('Card & gallery fees',I=>I*.03,.1),f('Travel & mileage',I=>I*.035,.35)];
+  const non=[f('Marketing & ads',()=>400,.3),f('Education & workshops',()=>230,.8),f('Gear',I=>I*.04,.6),f('Meals with clients',()=>80,.5),f('Styled shoots',I=>I>15000?150:0,.4)];
+  const costs=(i,which)=>sum([...ess,...non].map(l=>l[which][i]));
+  const tax=f('Tax savings (30% of profit)',()=>0,0,'tax'); const owner=f('Owner’s pay to home',()=>4500,0,'pay',{bridge:true});
+  const k401=f('Solo 401(k)',I=>I>15000?1500:0,0,'invest'); const gearF=f('Saving for (wishlist)',()=>300,0,'save'); M.forEach((_,i)=>{if(i>CUR)gearF.plan[i]=wishMonthly();});
+  M.forEach((_,i)=>{tax.plan[i]=Math.round(Math.max(totI(i)-costs(i,'plan'),0)*.3); if(i<=CUR) tax.act[i]=Math.round(Math.max(totA(i)-costs(i,'act'),0)*.3);});
+  const reserve={name:'Slow-season reserve',type:'reserve',plan:[],act:[]};
+  M.forEach((_,i)=>{reserve.plan[i]=totI(i)-costs(i,'plan')-tax.plan[i]-4500-k401.plan[i]-gearF.plan[i]; reserve.act[i]=i>CUR?null:totA(i)-costs(i,'act')-tax.act[i]-4500-k401.act[i]-300;});
+  return {key:'studio',name:'Studio',income,buckets:[
+    {key:'ess',name:'Running costs',hint:'What it takes to deliver the work',lines:ess},
+    {key:'non',name:'Growth',hint:'Optional spending that grows the studio',lines:non},
+    {key:'goal',name:'Set-asides',hint:'Pay yourself, taxes, retirement, reserve',lines:[owner,tax,k401,gearF,reserve]}]};
+}
+/* ---------- Saving For (studio wishlist) ---------- */
+const WISH_DEFAULT={items:[
+  {id:1,name:'Backup camera body',cost:2500,saved:1400,monthly:150,note:'So a wedding never depends on one camera.'},
+  {id:2,name:'85mm f/1.4 portrait lens',cost:1800,saved:650,monthly:100,note:''},
+  {id:3,name:'Off-camera flash kit',cost:600,saved:420,monthly:50,note:'For dark receptions.'},
+  {id:4,name:'New editing laptop',cost:3200,saved:0,monthly:0,note:'Not started yet.'},
+  {id:5,name:'Album sample set',cost:900,saved:0,monthly:0,note:'For consults.'}],
+  bought:[{name:'Second speedlight',cost:340,when:'Aug 2026'},{name:'Memory cards (6)',cost:210,when:'Apr 2026'}],next:6};
+let WISH; try{WISH=JSON.parse(localStorage.getItem('hsd-wish')||'null');}catch(e){} if(!WISH||!WISH.items)WISH=JSON.parse(JSON.stringify(WISH_DEFAULT));
+const saveWish=()=>{try{localStorage.setItem('hsd-wish',JSON.stringify(WISH))}catch(e){} BOOKS.studio=studioBook();};
+function wishMonthly(){return sum(WISH.items.map(w=>+w.monthly||0));}
+function monthsToGo(w,extra=0){const left=w.cost-w.saved;if(left<=0)return 0;const m=(+w.monthly||0)+extra;return m>0?Math.ceil(left/m):Infinity;}
+function readyLabel(n){if(n===0)return 'Ready now';if(n===Infinity)return 'Not started';const d=new Date(2026,10+n-1,1);return d.toLocaleString('en-US',{month:'short',year:'numeric'});}
+
+const BOOKS={home:homeBook(),studio:studioBook()};
+const incT=(b,w,i)=>sum(b.income.map(l=>l[w][i]));
+const bT=(bk,w,i)=>sum(bk.lines.map(l=>l[w][i]));
+const ytd=(arr)=>sum(arr.slice(0,CUR+1));
+
+/* ---------- account + bill data ---------- */
+const ACCTS={
+ home:[['Cash accounts',[['Home Checking','Bills & everyday spending',6240],['Ally Savings','Emergency fund + trip + car fund',23700]]],
+       ['Credit cards',[['Amex Gold','Everyday spending (shared with studio)',-1620,'mixed'],['Chase Freedom','Backup card',0]]],
+       ['Loans',[['Mortgage','6.1% · 2051',-312400],['Car loan','4.9% · 2029',-14300],['Student loan','5.5% · 2031',-9800]]],
+       ['Investments',[['Roth IRA (you)','Retirement',41200],['Roth IRA (her)','Retirement',22800],['401(k) (you)','Retirement',88400],['Brokerage','Long-term',36900]]]],
+ studio:[['Cash accounts',[['Studio Checking','Client payments in, bills out',18240],['Tax Savings','Only for taxes',22000],['Slow-season reserve','Pays owner’s pay Jan–Mar',0,'reserve']]],
+       ['Credit cards',[['Chase Ink','Studio-only card',-1284],['Amex Gold','Shared with home: the tool sorts it',-1620,'mixed']]],
+       ['Investments',[['Solo 401(k)','Retirement',38500]]]]};
+const BILLS={
+ home:[[['Car registration',165]],[['Anniversary dinner',200]],[['Amazon Prime',139]],[['Tax filing',0]],[['Mother’s Day',120]],[['Italy trip',4200]],[['Car insurance (6 mo)',840]],[['Costco membership',65]],[['Back-to-school',150]],[['Halloween',80]],[['Holiday travel',600],['Thanksgiving',150]],[['Holiday gifts',800],['Car insurance (6 mo)',840]]],
+ studio:[[['Q4 estimated tax',5600]],[['Website hosting',300]],[['Business insurance',650]],[['Q1 estimated tax',4200],['File taxes',0]],[['Pic-Time annual',600]],[['Q2 estimated tax',6900]],[['Domain + email',45]],[['Gear insurance',420]],[['Q3 estimated tax',8800]],[['Adobe annual',240]],[['Dubsado annual',400]],[['LLC annual report',50],['Sensor cleaning',120]]]};
+
+/* ---------- transactions ---------- */
+const TX={
+ home:[
+  ['Oct 1','Home Checking','TRANSFER FROM STUDIO CHK',4500,'Studio owner’s pay','auto','Your owner’s pay from the studio.'],
+  ['Oct 1','Home Checking','MORTGAGE AUTOPAY',-2400,'Mortgage','auto'],
+  ['Oct 3','Amex Gold','TARGET 00012',-84.12,'','ask','Studio or home? If home, Household is the usual pick.'],
+  ['Oct 4','Amex Gold','TRADER JOE’S #552',-112.40,'Groceries','auto'],
+  ['Oct 6','Home Checking','DUKE ENERGY',-184.20,'Utilities','auto'],
+  ['Oct 9','Amex Gold','SEPHORA',-64.00,'Beauty & self-care','sug'],
+  ['Oct 11','Amex Gold','OLIVE & VINE',-96.50,'Eating out','sug','Friday night, so probably a date night.'],
+  ['Oct 14','Home Checking','TRANSFER TO ALLY SAVINGS',-2150,'','ask','Split like last month? $1,000 emergency · $650 Italy · $500 car fund'],
+  ['Oct 15','Home Checking','PAYROLL DEPOSIT',3700,'Your paycheck (net)','auto'],
+  ['Oct 18','Amex Gold','VENMO *K LEE',-45.00,'','ask','Venmo to K. Lee. What was it for?'],
+  ['Oct 20','Home Checking','VANGUARD BUY',-1300,'Brokerage','auto'],
+  ['Oct 22','Home Checking','AMEX EPAYMENT',-1640,'Transfer between my accounts','auto','Card payment. Not counted as spending twice.'],
+  ['Oct 25','Home Checking','HONDA FINANCIAL',-485,'Car loan','auto'],
+  ['Oct 27','Amex Gold','ETSY.COM',-38.00,'Gifts','sug'],
+ ],
+ studio:[
+  ['Oct 1','Studio Checking','TRANSFER TO HOME CHK',-4500,'Owner’s pay to home','auto','Shows up in Home as income.'],
+  ['Oct 2','Studio Checking','STRIPE TRANSFER',2400,'Weddings','sug','Matches the Dubsado invoice: Priya & Sam, final payment.'],
+  ['Oct 3','Chase Ink','ADOBE *CREATIVE CLOUD',-59.99,'Software & subscriptions','auto'],
+  ['Oct 3','Amex Gold','TARGET 00012',-84.12,'','ask','Studio or home?'],
+  ['Oct 6','Studio Checking','VENMO PAYMENT M ORTIZ',-600,'Second shooters','sug','Maya second-shot Hillside Barn on Oct 4.'],
+  ['Oct 9','Chase Ink','SHELL OIL 5741',-62.40,'Travel & mileage','sug','Session in Fairview that afternoon.'],
+  ['Oct 12','Amex Gold','AMAZON MKTPLACE',-146.89,'','ask','Two items. SD cards ($89.99) look like studio gear. Split it?'],
+  ['Oct 14','Studio Checking','TRANSFER TO TAX SAVINGS',-3000,'Tax savings (30% of profit)','auto'],
+  ['Oct 15','Studio Checking','PIC-TIME PAYOUT',318.50,'Print & album sales','auto'],
+  ['Oct 18','Studio Checking','STRIPE TRANSFER',650,'Sessions','sug','Matches 3 fall mini-session invoices.'],
+  ['Oct 21','Chase Ink','THE PRESS CAFE',-38.20,'Meals with clients','sug','Calendar: consult with Lena & Chris at 10am.'],
+  ['Oct 24','Studio Checking','PAYPAL *JESS WEDDING CO',450,'Second shooting for others','sug','You second-shot for Jess on Oct 18.'],
+  ['Oct 25','Studio Checking','PAYMENT CHASE CARD',-1284.33,'Transfer between my accounts','auto','Card payment. Not counted as spending twice.'],
+ ]};
+
+/* ---------- state ---------- */
+const TABS=[['snap','Financial Snapshot'],['plan','Categories & Goals'],['tx','Income & Expense Log'],['annual','Annual Spending Plan'],['review','October in Review'],['nw','Net Worth'],['dash','Dashboard Summary']];
+const BOOK='studio';
+if(BOOK==='studio')TABS.splice(5,0,['save','Saving For']);
+const state={book:BOOK,tab:'snap'};
+try{const s=JSON.parse(localStorage.getItem('hsd-'+BOOK)||'null');if(s&&s.tab&&TABS.some(t=>t[0]===s.tab))state.tab=s.tab;}catch(e){}
+const txState={home:TX.home.map(r=>({cat:r[4],st:r[5]})),studio:TX.studio.map(r=>({cat:r[4],st:r[5]}))};
+
+function render(){
+  try{localStorage.setItem('hsd',JSON.stringify(state))}catch(e){}
+  const tabs=TABS.map(([id,n])=>[id,id==='nw'&&state.book==='studio'?'Taxes & Profit':n]);
+  $('#tabs').innerHTML=tabs.map(([id,n])=>`<button data-t="${id}" aria-current="${state.tab===id}">${n}</button>`).join('');
+  $('#tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{state.tab=b.dataset.t;render();window.scrollTo({top:0});});
+  const B=BOOKS[state.book];
+  $('#app').innerHTML=VIEW[state.tab](B);
+  if(AFTER[state.tab])AFTER[state.tab](B);
+}
+
+const VIEW={},AFTER={};
+
+/* ===== 1. Financial Snapshot ===== */
+VIEW.snap=B=>{
+  const groups=ACCTS[B.key].map(([g,rows])=>[g,rows.map(r=>r[3]==='reserve'?[r[0],r[1],reserveBal(),'reserve']:r)]);
+  const tot=sum(groups.flatMap(([,r])=>r.map(x=>x[2])));
+  const now=10;
+  return `<div class="grid g2">
+   ${panel(`Financial snapshot as of Nov 12, 2026`,`
+     ${groups.map(([g,rows])=>`<div class="bar-s" style="margin:0 -14px">${g}</div><div class="scroll"><table><thead><tr><th>Account</th><th>Purpose</th><th class="r">Balance</th><th>Updated</th></tr></thead><tbody>
+       ${rows.map(([n,p,v,flag])=>`<tr><td><b>${n}</b>${flag==='mixed'?` <span class="pill p-ask">mixed</span>`:''}</td><td class="muted">${p}</td><td class="r num">${fmt(v)}</td><td><span class="pill p-ok">synced today</span></td></tr>`).join('')}
+     </tbody></table></div>`).join('')}
+     <div class="callout" style="margin-top:12px">${B.key==='home'?`Total across these accounts: <b class="num">${fmt(tot)}</b>. Balances update on their own every night. You never type them in.`:`The Amex is used for both studio and home, which is where most of the “studio or home?” questions come from. A studio-only card would remove most of them.`}</div>`)}
+   ${panel(B.key==='home'?'Bills at a glance':'Studio bills at a glance',`
+     <p class="note" style="margin-bottom:10px">Yearly and once-a-year costs, so nothing sneaks up on you. ${MF[now]} is highlighted because it’s coming up.</p>
+     <div class="months">${BILLS[B.key].map((items,i)=>`<div class="mon ${i===now?'now':''}"><div class="bar-s">${MF[i]}</div><ul>${items.map(([n,v])=>`<li><span>${n}</span><span class="num muted">${v?fmt(v):''}</span></li>`).join('')}</ul></div>`).join('')}</div>`)}
+  </div>`;
+};
+function reserveBal(){const r=BOOKS.studio.buckets[2].lines.find(l=>l.type==='reserve');return 9000+ytd(r.act);}
+
+/* ===== 2. Categories & Goals (zero-based plan) ===== */
+VIEW.plan=B=>{
+  const i=CUR+1; // planning November
+  const inc=incT(B,'plan',i), bk=B.buckets.map(b=>[b.name,bT(b,'plan',i)]), left=inc-sum(bk.map(x=>x[1]));
+  const goalRows=B.key==='home'
+    ?[['Emergency fund',18000,14200],['Italy trip, June',6000,3900],['New car fund',10000,2600],['Roth IRAs (both)',14000,11660],['Student loan payoff',9800,5340]]
+    :[['Revenue goal',165000,sum(M.map((_,j)=>j<=CUR?incT(B,'act',j):0))],['Profit goal',100000,profitYTD(B)],['Solo 401(k)',23500,ytd(B.buckets[2].lines[2].act)],['Tax savings (30% of profit)',Math.round(profitYTD(B)*.3),ytd(B.buckets[2].lines[1].act)]];
+  return `<div class="grid">
+   <div class="grid g2">
+    ${panel(`Income · ${MF[i]} plan`,`<div class="scroll"><table><thead><tr><th>Income type</th><th class="r">Monthly amount</th></tr></thead><tbody>
+      ${B.income.map(l=>`<tr><td>${l.name}${l.bridge?` <span class="pill p-bridge">from studio</span>`:''}</td><td class="r num">${fmt(l.plan[i])}</td></tr>`).join('')}
+      <tr class="tot"><td>Total</td><td class="r num">${fmt(inc)}</td></tr></tbody></table></div>
+      ${B.key==='studio'?`<p class="note" style="margin-top:10px">Studio income changes a lot by season, so each month gets its own plan based on what’s booked.</p>`:''}`)}
+    ${panel('Where every dollar goes',`${donutBlock(bk,fmt(inc))}
+      <div class="zero" style="margin-top:12px"><span>Left to assign: ${fmt(left)}</span><span style="font-weight:600">✓ Every dollar has a job</span></div>`)}
+   </div>
+   <div class="grid g3">
+    ${B.buckets.map((b,bi)=>panel(`${bi+1}. ${b.name}`,`<div class="bar-s">${b.hint}</div><div class="scroll"><table><thead><tr><th>Category</th><th class="r">Monthly target</th></tr></thead><tbody>
+       ${b.lines.map(l=>`<tr><td>${l.name}${l.bridge?` <span class="pill p-bridge">to home</span>`:''}</td><td class="r num">${l.plan[i]<0?`<span class="muted">draw </span>`:''}${fmt(l.plan[i])}</td></tr>`).join('')}
+       <tr class="tot"><td>Total</td><td class="r num">${fmt(bT(b,'plan',i))}</td></tr></tbody></table></div>`,false)).join('')}
+   </div>
+   ${panel(B.key==='home'?'Savings, investing & debt goals for 2026':'Studio goals for 2026',`<div class="scroll"><table><thead><tr><th>Goal</th><th class="r">Annual goal</th><th class="r">So far</th><th class="r">Remaining</th><th style="width:30%">Progress</th></tr></thead><tbody>
+     ${goalRows.map(([n,g,h])=>`<tr><td><b>${n}</b></td><td class="r num">${fmt(g)}</td><td class="r num">${fmt(h)}</td><td class="r num">${fmt(Math.max(g-h,0))}</td><td><div class="prog"><i style="width:${Math.min(h/g,1)*100}%"></i></div></td></tr>`).join('')}
+   </tbody></table></div>`)}
+   ${B.key==='studio'?`<div class="callout">The slow-season reserve is how the studio pays you the same $4,500 every month. Busy months fill it, and January through March draw it down. That keeps the home budget steady all year.</div>`:''}
+  </div>`;
+};
+function profitYTD(B){let p=0;for(let i=0;i<=CUR;i++)p+=incT(B,'act',i)-bT(B.buckets[0],'act',i)-bT(B.buckets[1],'act',i);return p;}
+
+/* ===== 3. Income & Expense Log ===== */
+VIEW.tx=B=>{
+  const rows=TX[B.key],st=txState[B.key];
+  const ask=st.filter(s=>s.st==='ask').length,sug=st.filter(s=>s.st==='sug').length;
+  const opts=sel=>`<option value="">Choose…</option><optgroup label="Income">${B.income.map(l=>`<option ${l.name===sel?'selected':''}>${l.name}</option>`).join('')}</optgroup>`+
+    B.buckets.map(b=>`<optgroup label="${b.name}">${b.lines.map(l=>`<option ${l.name===sel?'selected':''}>${l.name}</option>`).join('')}</optgroup>`).join('')+
+    `<optgroup label="Other"><option ${sel==='Transfer between my accounts'?'selected':''}>Transfer between my accounts</option><option>Belongs to ${B.key==='home'?'Studio':'Home'}</option><option>Split it</option></optgroup>`;
+  const bucketOf=c=>{for(const b of B.buckets)if(b.lines.some(l=>l.name===c))return b.name;if(B.income.some(l=>l.name===c))return 'Income';return c?'—':'';};
+  const L={auto:['p-auto','Sorted for you'],sug:['p-sug','Suggested'],ask:['p-ask','Needs you'],ok:['p-ok','Done']};
+  return `<div class="grid">
+   <div class="callout">The template asks you to type each purchase in. Here every row comes in from your accounts. Most are sorted already, so you only fix the yellow rows and confirm the blue ones. ${ask+sug===0?'<b>October is fully sorted ✓</b>':`<b>${ask} need you · ${sug} to confirm.</b>`}</div>
+   ${panel(`${B.name} · Income & expense log · October`,`<div class="scroll"><table><thead><tr><th>Date</th><th>Account</th><th>Description</th><th class="r">Income</th><th class="r">Expense</th><th>Category</th><th>Bucket</th><th>Status</th><th>Notes</th></tr></thead><tbody>
+    ${rows.map((r,i)=>{const s=st[i];const l=L[s.st];return `<tr class="${s.st==='ask'?'ask':''}"><td class="num" style="white-space:nowrap">${r[0]}</td><td class="muted" style="white-space:nowrap">${r[1]}</td><td class="desc">${esc(r[2])}</td>
+      <td class="r num" style="color:var(--good)">${r[3]>0?fmt(r[3],2):''}</td><td class="r num">${r[3]<0?fmt(-r[3],2):''}</td>
+      <td><select class="cat" id="cat-${B.key}-${i}" data-i="${i}" aria-label="Category">${opts(s.cat)}</select></td>
+      <td class="muted" style="white-space:nowrap">${bucketOf(s.cat)}</td>
+      <td>${s.st==='sug'?`<button class="pill p-sug" style="border:0;cursor:pointer" data-ok="${i}">Suggested · OK?</button>`:`<span class="pill ${l[0]}">${l[1]}</span>`}</td>
+      <td class="note" style="min-width:200px">${r[6]||''}</td></tr>`}).join('')}
+   </tbody></table></div>`,false)}
+   <p class="note">Prefer one at a time on your phone? The same rows can run through the card-by-card flow from the first set of mockups.</p>
+  </div>`;
+};
+AFTER.tx=B=>{
+  document.querySelectorAll('select.cat').forEach(s=>s.onchange=()=>{const t=txState[B.key][s.dataset.i];t.cat=s.value;if(s.value)t.st='ok';render();});
+  document.querySelectorAll('[data-ok]').forEach(b=>b.onclick=()=>{txState[B.key][b.dataset.ok].st='ok';render();});
+};
+
+/* ===== 4. Annual Spending Plan ===== */
+VIEW.annual=B=>{
+  const cell=(p,a,good)=>{if(a==null)return `<td class="r num sep">${fmt(p)}</td><td class="r num muted">—</td><td class="r num muted">—</td>`;const d=a-p;const cls=Math.abs(d)<1?'':(good(d)?'pos':'neg');return `<td class="r num sep">${fmt(p)}</td><td class="r num">${fmt(a)}</td><td class="r num ${cls}">${Math.abs(d)<1?'$0':(d>0?'+':'')+fmt(d)}</td>`;};
+  const incGood=d=>d>=0, spendGood=d=>d<=0, goalGood=d=>d>=0;
+  const row=(name,p,a,good,cls='')=>`<tr class="${cls}"><td>${name}</td>${M.map((_,i)=>cell(p[i],a[i],good)).join('')}</tr>`;
+  const sumL=(lines,w)=>M.map((_,i)=>w==='act'&&i>CUR?null:sum(lines.map(l=>l[w][i])));
+  let body=row('Total income',sumL(B.income,'plan'),sumL(B.income,'act'),incGood,'tot')+B.income.map(l=>row(l.name,l.plan,l.act,incGood)).join('');
+  B.buckets.forEach(b=>{const g=b.key==='goal'?goalGood:spendGood;body+=row(b.name,sumL(b.lines,'plan'),sumL(b.lines,'act'),g,'tot')+b.lines.map(l=>row(l.name,l.plan,l.act,g)).join('');});
+  return `<div class="grid">
+   <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center">
+     <p class="note">Plan, actual and the difference for every month. Actuals fill in on their own once a month is sorted. Scroll sideways for the full year.</p>
+     <div class="diff-legend"><span class="pill pos">Better than plan</span><span class="pill neg">Worse than plan</span></div></div>
+   ${panel(`${B.name} · Annual spending plan · 2026`,`<div class="scroll"><table class="ann"><thead><tr><th rowspan="2" style="background:var(--navy);color:var(--navy-ink)">Category</th>${M.map(m=>`<th class="m sep" colspan="3">${m}</th>`).join('')}</tr><tr>${M.map(()=>`<th class="r sep">Plan</th><th class="r">Actual</th><th class="r">+/−</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`,false)}
+  </div>`;
+};
+
+/* ===== 5. Month in Review ===== */
+const reflect={};
+VIEW.review=B=>{
+  const i=CUR, inc=incT(B,'act',i);
+  const [E,N,G]=B.buckets; const e=bT(E,'act',i), n=bT(N,'act',i);
+  const gl=G.lines, by=t=>sum(gl.filter(l=>l.type===t).map(l=>l.act[i]));
+  const kp=B.key==='home'
+   ?[['Income',inc],['Essentials',e],['Non-essentials',n],['Savings',by('save')],['Investments',by('invest')],['Debt paid',by('debt')],['Spend rate',pct(e+n,inc)],['Save + invest rate',pct(by('save')+by('invest'),inc)],['Net worth',fmt(NW().at(-1).nw)]]
+   :[['Income',inc],['Running costs',e],['Growth',n],['Profit',inc-e-n],['Tax set aside',by('tax')],['Owner’s pay',by('pay')],['Solo 401(k)',by('invest')],['Reserve added',by('reserve')],['Profit margin',pct(inc-e-n,inc)]];
+  const pie=B.key==='home'?[[E.name,e],[N.name,n],['Savings',by('save')],['Investments',by('invest')],['Debt payoff',by('debt')]]:[[E.name,e],[N.name,n],['Owner’s pay',by('pay')],['Taxes',by('tax')],['Retirement',by('invest')],['Reserve & gear fund',by('reserve')+by('save')]];
+  const spend=b=>{const tot=bT(b,'act',i);return `<table><thead><tr><th>${b.name}</th><th class="r">Amount</th><th class="r">% of total</th></tr></thead><tbody>${b.lines.map(l=>`<tr><td>${l.name}</td><td class="r num">${fmt(l.act[i])}</td><td class="r num">${pct(l.act[i],tot)}</td></tr>`).join('')}<tr class="tot"><td>Total</td><td class="r num">${fmt(tot)}</td><td class="r">100%</td></tr></tbody></table>`;};
+  const top3=[...E.lines,...N.lines].filter(l=>l.type!=='inc').sort((a,b)=>b.act[i]-a.act[i]).slice(0,3).map(l=>l.name);
+  const over=N.lines.concat(E.lines).filter(l=>l.act[i]>l.plan[i]*1.1&&l.act[i]-l.plan[i]>40);
+  const r=reflect[B.key]||(reflect[B.key]={});
+  const adj=B.key==='home'
+   ?[['eo','Eating out has been over plan 3 months in a row (Aug, Sep, Oct).','Raise to $400','Keep $350 and try harder'],['italy','Italy fund is on pace. $650/month gets you to $6,000 by May.','Keep it','Bump to $750']]
+   :[['travel','Travel ran over plan in October because of Cedar Lake.','Add a travel fee over 60 mi','Raise travel plan'],['later','You pay for Later and Canva, and both can schedule posts.','Cancel Later ($300/yr)','Keep both']];
+  return `<div class="grid">
+   <div class="bar-h" style="border-radius:6px">${B.name} · October month in review</div>
+   <div class="grid g2">
+    ${panel('Monthly snapshot',`<div class="kpis">${kp.map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v num">${typeof v==='number'?fmt(v):v}</div></div>`).join('')}</div>
+      <div style="margin-top:14px">${donutBlock(pie,fmt(inc))}</div>`)}
+    ${panel('Planned vs. actual',`<div class="legend" style="margin-bottom:6px"><span><i style="background:var(--c3)"></i>Planned</span><span><i style="background:var(--c1)"></i>Actual</span></div>
+      ${bars(B.buckets.map(b=>b.name),[B.buckets.map(b=>bT(b,'plan',i)),B.buckets.map(b=>bT(b,'act',i))],['var(--c3)','var(--c1)'],200)}
+      <div class="bar-s" style="margin:12px -14px 10px">${G.name} contributions</div>${hbar(gl.map(l=>[l.name,l.act[i]]),'var(--c5)')}`)}
+   </div>
+   <div class="grid g2">
+    ${panel('Spending summary',`<div class="grid g2" style="gap:10px"><div class="scroll">${spend(E)}</div><div class="scroll">${spend(N)}</div></div>`)}
+    ${panel('Monthly reflection',`<div class="grid" style="gap:14px">
+      <div><div class="bar-s" style="margin:0 -14px 10px;text-align:left">Step 1 · Update</div>
+       <ul class="check">${['Income','Expenses','Savings transfers','Investments','Debt payments',B.key==='home'?'Net worth (all accounts)':'Tax savings transfer'].map(x=>`<li><span class="box">✓</span><span>${x}</span><span class="pill p-auto" style="margin-left:auto">done for you</span></li>`).join('')}</ul></div>
+      <div><div class="bar-s" style="margin:0 -14px 10px;text-align:left">Step 2 · Reflect</div>
+       <div class="grid" style="gap:10px">
+        <div class="q"><label>My top three spending categories this month</label><p class="num">${top3.join(' · ')}</p></div>
+        ${over.length?`<div class="q"><label>Over plan</label><p>${over.map(l=>`${l.name} by ${fmt(l.act[i]-l.plan[i])}`).join(' · ')}</p></div>`:''}
+        <div class="q"><label for="rf1-${B.key}">Which purchases felt worth it, and why?</label><textarea id="rf1-${B.key}" data-r="w">${esc(r.w||'')}</textarea></div>
+        <div class="q"><label for="rf2-${B.key}">Anything I’d do differently? What triggered it?</label><textarea id="rf2-${B.key}" data-r="d">${esc(r.d||'')}</textarea></div>
+       </div></div>
+      <div><div class="bar-s" style="margin:0 -14px 10px;text-align:left">Step 3 · Adjust</div>
+       <div class="grid" style="gap:8px">${adj.map(([id,t,a,b])=>`<div class="adj"><span style="flex:1 1 220px">${t}</span><div class="btns"><button class="btn ${r[id]===a?'on':''}" data-adj="${id}" data-v="${esc(a)}">${a}</button><button class="btn ${r[id]===b?'on':''}" data-adj="${id}" data-v="${esc(b)}">${b}</button></div></div>`).join('')}</div></div>
+    </div>`)}
+   </div></div>`;
+};
+AFTER.review=B=>{
+  const r=reflect[B.key];
+  document.querySelectorAll('[data-r]').forEach(t=>t.oninput=()=>{r[t.dataset.r]=t.value;});
+  document.querySelectorAll('[data-adj]').forEach(b=>b.onclick=()=>{r[b.dataset.adj]=b.dataset.v;render();});
+};
+
+/* ===== 6a. Net Worth (home) ===== */
+function NW(){
+  seed=99;const out=[];let cash=26000,ret=138000,brk=14000,home=455000,car=21000,mort=-318500,cl=-18800,sl=-14700,cc=-1500;
+  for(let i=0;i<=CUR;i++){
+    cash+=1650+(i===5?-4200:0)+Math.round((rnd()-.5)*600); ret+=1166+Math.round(ret*((i===3?-.03:i===7?.035:.008))); brk+=1300+Math.round(brk*(i===3?-.04:.01));
+    home+=i%3===2?2000:0; car-=250; mort+=520; cl+=420; sl+=470; cc=-1200-Math.round(rnd()*900);
+    const assets=cash+ret+brk+home+car, liab=mort+cl+sl+cc;
+    out.push({m:M[i],cash,ret,brk,home,car,mort,cl,sl,cc,assets,liab,nw:assets+liab});}
+  return out;
+}
+/* ===== Saving For (studio) ===== */
+VIEW.save=B=>{
+  const items=WISH.items, cost=sum(items.map(w=>w.cost)), saved=sum(items.map(w=>Math.min(w.saved,w.cost))), monthly=wishMonthly();
+  const next=items.map(w=>[w,monthsToGo(w)]).filter(([,n])=>n!==Infinity).sort((a,b)=>a[1]-b[1])[0];
+  const idle=items.find(w=>monthsToGo(w)===Infinity);
+  const top=items.find(w=>monthsToGo(w)>0&&monthsToGo(w)!==Infinity);
+  const tip=top?`Add $50 a month to the ${top.name.toLowerCase()} and it’s ready in ${readyLabel(monthsToGo(top,50))} instead of ${readyLabel(monthsToGo(top))}.`:'';
+  return `<div class="grid">
+   <div class="grid g3">
+    ${panel('Wishlist total',`<div class="kpis" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="kpi"><div class="l">Items cost</div><div class="v num">${fmt(cost)}</div></div><div class="kpi"><div class="l">Saved so far</div><div class="v num" style="color:var(--good)">${fmt(saved)}</div></div></div>
+      <div style="margin-top:12px;display:grid;gap:6px"><div class="prog" style="height:12px"><i style="width:${cost?saved/cost*100:0}%;background:var(--c5)"></i></div><span class="note">${pct(saved,cost)} of everything on the list</span></div>`)}
+    ${panel('Going in each month',`<div style="font-size:30px;font-weight:800" class="num">${fmt(monthly)}</div>
+      <p class="note" style="margin-top:6px">This is the “Saving for” line in your Set-asides. Whatever isn’t used here goes to the slow-season reserve.</p>`)}
+    ${panel('Next purchase',next?`<div style="font-size:20px;font-weight:800">${esc(next[0].name)}</div><div class="ready ${next[1]===0?'now':''}" style="font-size:16px;margin-top:4px">${readyLabel(next[1])}</div><p class="note" style="margin-top:6px">${next[1]===0?'Fully saved. Buy it whenever you like.':`${fmt(next[0].cost-next[0].saved)} still to save at ${fmt(next[0].monthly)}/month.`}</p>`:'<p class="note">Set a monthly amount on any item to see when it’s ready.</p>')}
+   </div>
+   ${tip||idle?`<div class="callout">${tip}${idle?` The ${idle.name.toLowerCase()} has nothing going to it yet.`:''}</div>`:''}
+   ${panel('Saving for · in priority order',`${items.length?items.map((w,i)=>{const n=monthsToGo(w);const p=Math.min(w.saved/w.cost,1);return `<div class="wish">
+       <div class="ord"><button data-up="${i}" aria-label="Move up" ${i===0?'disabled':''}>▲</button><button data-dn="${i}" aria-label="Move down" ${i===items.length-1?'disabled':''}>▼</button></div>
+       <div class="span" style="min-width:0"><div class="nm">${i+1}. ${esc(w.name)}</div>${w.note?`<div class="note">${esc(w.note)}</div>`:''}<div class="prog" style="margin-top:6px"><i style="width:${p*100}%;background:var(--c5)"></i></div></div>
+       <div><div class="lbl">Cost</div><div class="num">${fmt(w.cost)}</div></div>
+       <div><div class="lbl">Saved</div><div class="num">${fmt(w.saved)}</div></div>
+       <div><label class="lbl" for="m-${w.id}">Per month</label><input type="number" id="m-${w.id}" min="0" step="25" value="${w.monthly}" data-m="${i}"></div>
+       <div><div class="lbl">Ready</div><div class="ready ${n===0?'now':n===Infinity?'never':''}">${readyLabel(n)}</div></div>
+       <div style="display:flex;gap:6px;flex-wrap:wrap">${n===0?`<button class="btn on" data-buy="${i}">Bought it</button>`:''}<button class="btn" data-rm="${i}" aria-label="Remove ${esc(w.name)}">Remove</button></div>
+     </div>`}).join(''):'<p class="pad note">Nothing on the list yet. Add your first item below.</p>'}`,false)}
+   ${panel('Add something to save for',`<form class="add" id="addform">
+      <label>Item<input id="a-name" required placeholder="e.g. 35mm f/1.4 lens"></label>
+      <label>Cost<input id="a-cost" type="number" min="1" step="1" required placeholder="1200"></label>
+      <label>Already saved<input id="a-saved" type="number" min="0" step="1" value="0"></label>
+      <label>Per month<input id="a-monthly" type="number" min="0" step="25" value="50"></label>
+      <button class="btn on" type="submit" style="padding:8px 14px">Add</button></form>`)}
+   ${panel('Bought from the list',`<table><thead><tr><th>Item</th><th>When</th><th class="r">Cost</th></tr></thead><tbody>${WISH.bought.map(b=>`<tr><td>${esc(b.name)}</td><td>${b.when}</td><td class="r num">${fmt(b.cost)}</td></tr>`).join('')}</tbody></table>
+     <p class="note" style="margin-top:8px">When you buy something from the list, the purchase is sorted as Gear automatically and paid from this savings, so it doesn’t look like overspending that month.</p>`)}
+  </div>`;
+};
+AFTER.save=()=>{
+  const re=()=>{saveWish();render();};
+  document.querySelectorAll('[data-m]').forEach(x=>x.onchange=()=>{WISH.items[x.dataset.m].monthly=Math.max(0,+x.value||0);re();});
+  document.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{const i=+b.dataset.up;[WISH.items[i-1],WISH.items[i]]=[WISH.items[i],WISH.items[i-1]];re();});
+  document.querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{const i=+b.dataset.dn;[WISH.items[i+1],WISH.items[i]]=[WISH.items[i],WISH.items[i+1]];re();});
+  document.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{WISH.items.splice(+b.dataset.rm,1);re();});
+  document.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{const w=WISH.items.splice(+b.dataset.buy,1)[0];WISH.bought.unshift({name:w.name,cost:w.cost,when:'Nov 2026'});re();});
+  const f=$('#addform'); if(f) f.onsubmit=e=>{e.preventDefault();const name=$('#a-name').value.trim(),cost=+$('#a-cost').value;if(!name||!(cost>0))return;
+    WISH.items.push({id:WISH.next++,name,cost,saved:Math.max(0,+$('#a-saved').value||0),monthly:Math.max(0,+$('#a-monthly').value||0),note:''});re();};
+};
+
+VIEW.nw=B=>B.key==='studio'?taxesView(B):(()=>{
+  const d=NW();const goal=500000;const last=d.at(-1);
+  const rows=[['Cash accounts','cash'],['Retirement','ret'],['Brokerage','brk'],['Home (estimated)','home'],['Car (estimated)','car'],['Mortgage','mort'],['Car loan','cl'],['Student loan','sl'],['Credit cards','cc']];
+  const mom=(i,key)=>i===0?'':(()=>{const p=d[i-1][key],c=d[i][key];if(!p)return '';const v=Math.round((c-p)/Math.abs(p)*1000)/10;return `<span class="${v>=0?'pos':'neg'}" style="padding:1px 5px;border-radius:3px;font-size:11px">${v>=0?'+':''}${v}%</span>`;})();
+  return `<div class="grid">
+   <div class="grid g2">
+    ${panel('Net worth',`<div class="kpis"><div class="kpi"><div class="l">Net worth</div><div class="v num">${fmt(last.nw)}</div></div><div class="kpi"><div class="l">Since January</div><div class="v num" style="color:var(--good)">+${fmt(last.nw-d[0].nw)}</div></div><div class="kpi"><div class="l">Goal for year end</div><div class="v num">${fmt(goal)}</div></div></div>
+      <div style="margin-top:12px;display:grid;gap:6px"><div class="prog" style="height:12px"><i style="width:${Math.min(last.nw/goal,1)*100}%;background:var(--c5)"></i></div><span class="note">${pct(last.nw,goal)} of the way there, with ${fmt(goal-last.nw)} to go</span></div>`)}
+    ${panel('Net worth progress',line(d.map(x=>x.m),[d.map(x=>x.nw)],['var(--c2)'],{h:190,min:Math.floor(d[0].nw/50000)*50000}))}
+   </div>
+   ${panel('Monthly net worth tracker',`<div class="scroll"><table class="ann"><thead><tr><th style="background:var(--navy);color:var(--navy-ink)">Account</th>${d.map(x=>`<th class="m sep" colspan="2">${x.m}</th>`).join('')}</tr></thead><tbody>
+     <tr class="tot"><td>Total assets</td>${d.map((x,i)=>`<td class="r num sep">${fmt(x.assets)}</td><td>${mom(i,'assets')}</td>`).join('')}</tr>
+     ${rows.slice(0,5).map(([n,key])=>`<tr><td>${n}</td>${d.map((x,i)=>`<td class="r num sep">${fmt(x[key])}</td><td>${mom(i,key)}</td>`).join('')}</tr>`).join('')}
+     <tr class="tot"><td>Total debts</td>${d.map(x=>`<td class="r num sep">${fmt(x.liab)}</td><td></td>`).join('')}</tr>
+     ${rows.slice(5).map(([n,key])=>`<tr><td>${n}</td>${d.map(x=>`<td class="r num sep">${fmt(x[key])}</td><td></td>`).join('')}</tr>`).join('')}
+     <tr class="tot"><td>Net worth</td>${d.map((x,i)=>`<td class="r num sep">${fmt(x.nw)}</td><td>${mom(i,'nw')}</td>`).join('')}</tr>
+   </tbody></table></div><p class="note" style="padding:10px 14px">Balances come from your accounts on the last day of each month. Home and car values are estimates you can edit.</p>`,false)}
+  </div>`;})();
+
+/* ===== 6b. Taxes & Profit (studio) ===== */
+function taxesView(B){
+  const [E,N,G]=B.buckets;
+  const inc=M.map((_,i)=>i>CUR?null:incT(B,'act',i)), cost=M.map((_,i)=>i>CUR?null:bT(E,'act',i)+bT(N,'act',i));
+  const prof=inc.map((v,i)=>v==null?null:v-cost[i]);
+  const resL=G.lines.find(l=>l.type==='reserve');let bal=9000;const res=M.map((_,i)=>{const v=i<=CUR?resL.act[i]:resL.plan[i];bal+=v;return bal;});
+  const py=profitYTD(B), owed=Math.round(py*.3), saved=sum(G.lines.find(l=>l.type==='tax').act.slice(0,CUR+1));
+  return `<div class="grid">
+   <div class="grid g2">
+    ${panel('Profit & loss · 2026 so far',`<div class="kpis"><div class="kpi"><div class="l">Income</div><div class="v num">${fmt(ytd(inc))}</div></div><div class="kpi"><div class="l">Costs</div><div class="v num">${fmt(ytd(cost))}</div></div><div class="kpi"><div class="l">Profit</div><div class="v num">${fmt(py)}</div></div></div>
+      <div style="margin-top:12px"><div class="legend" style="margin-bottom:6px"><span><i style="background:var(--c2)"></i>Income</span><span><i style="background:var(--c6)"></i>Costs</span></div>${bars(M.slice(0,CUR+1),[inc.slice(0,CUR+1),cost.slice(0,CUR+1)],['var(--c2)','var(--c6)'],190)}</div>`)}
+    ${panel('Taxes',`<div style="display:grid;gap:8px"><b style="font-size:16px">Estimated tax on this year’s profit: <span class="num">${fmt(owed)}</span></b>
+      <div class="prog" style="height:12px"><i style="width:${Math.min(saved/owed,1)*100}%;background:var(--c5)"></i></div>
+      <span class="note num">${fmt(saved)} moved to Tax Savings so far (${pct(saved,owed)} of the estimate)</span></div>
+      <div class="scroll" style="margin-top:12px"><table><thead><tr><th>Due</th><th>Payment</th><th class="r">Amount</th><th>Status</th></tr></thead><tbody>
+       <tr><td>Apr 15</td><td>Q1 estimated tax</td><td class="r num">$4,200</td><td><span class="pill p-ok">Paid</span></td></tr>
+       <tr><td>Jun 15</td><td>Q2 estimated tax</td><td class="r num">$6,900</td><td><span class="pill p-ok">Paid</span></td></tr>
+       <tr><td>Sep 15</td><td>Q3 estimated tax</td><td class="r num">$8,800</td><td><span class="pill p-ok">Paid</span></td></tr>
+       <tr><td>Jan 15</td><td>Q4 estimated tax</td><td class="r num">≈ $5,600</td><td><span class="pill p-sug">Coming up</span></td></tr></tbody></table></div>
+      <p class="note" style="margin-top:8px">30% is a planning number. Your tax preparer confirms the real amount each year.</p>`)}
+   </div>
+   ${panel('Slow-season reserve balance',`<div class="legend" style="margin-bottom:6px"><span><i style="background:var(--c2)"></i>Actual</span><span><i style="background:var(--muted)"></i>Planned for Nov–Dec</span></div>
+     ${line(M,[res.map((v,i)=>i<=CUR?v:null),res.map((v,i)=>i>=CUR?v:null)],['var(--c2)','var(--muted)'],{h:200,dash:[0,1]})}
+     <p class="note">Busy months fill the reserve and quiet months draw it down, so your $4,500 owner’s pay to home never changes.</p>`)}
+  </div>`;
+}
+
+/* ===== 7. Dashboard Summary ===== */
+VIEW.dash=B=>{
+  const [E,N,G]=B.buckets;
+  const inc=M.slice(0,CUR+1).map((_,i)=>incT(B,'act',i)), spent=M.slice(0,CUR+1).map((_,i)=>bT(E,'act',i)+bT(N,'act',i));
+  const ty=t=>sum(G.lines.filter(l=>l.type===t).map(l=>ytd(l.act)));
+  const top=b=>[...b.lines].sort((x,y)=>ytd(y.act)-ytd(x.act)).slice(0,3);
+  const yr=B.key==='home'
+   ?[['Total income',ytd(inc)],['Total spent',ytd(spent)],['  Essentials',ytd(E.lines.flatMap(l=>l.act))],['  Non-essentials',ytd(N.lines.flatMap(l=>l.act))],['Total saved',ty('save')],['Total invested',ty('invest')],['Total debt paid',ty('debt')]]
+   :[['Total income',ytd(inc)],['Total costs',ytd(spent)],['  Running costs',ytd(E.lines.flatMap(l=>l.act))],['  Growth',ytd(N.lines.flatMap(l=>l.act))],['Profit',ytd(inc)-ytd(spent)],['Owner’s pay to home',ty('pay')],['Set aside for taxes',ty('tax')],['Solo 401(k)',ty('invest')]];
+  return `<div class="grid">
+   <div class="grid g2">
+    ${panel('Year in review (to date)',`<table><tbody>${yr.map(([n,v])=>`<tr class="${n.startsWith('  ')?'':'sub'}"><td style="${n.startsWith('  ')?'padding-left:22px;font-style:italic':''}">${n.trim()}</td><td class="r num">${fmt(v)}</td></tr>`).join('')}</tbody></table>`)}
+    ${panel(B.key==='home'?'Income vs. total expenses':'Income vs. costs',`<div class="legend" style="margin-bottom:6px"><span><i style="background:var(--c1)"></i>Income</span><span><i style="background:var(--c3)"></i>Spending</span></div>${bars(M.slice(0,CUR+1),[inc,spent],['var(--c1)','var(--c3)'])}`)}
+   </div>
+   <div class="grid g3">
+    ${panel(B.key==='home'?'Income by type':'Income by type',donutBlock(B.income.map(l=>[l.name,ytd(l.act)]),fmt(ytd(inc))))}
+    ${panel(`Top 3 · ${E.name}`,`<table><tbody>${top(E).map((l,i)=>`<tr><td>${i+1}. ${l.name}</td><td class="r num">${fmt(ytd(l.act))}</td></tr>`).join('')}</tbody></table>
+      <div class="bar-s" style="margin:12px -14px 0">Top 3 · ${N.name}</div><table><tbody>${top(N).map((l,i)=>`<tr><td>${i+1}. ${l.name}</td><td class="r num">${fmt(ytd(l.act))}</td></tr>`).join('')}</tbody></table>`)}
+    ${panel(`${G.name} so far`,hbar(G.lines.map(l=>[l.name,ytd(l.act)]),'var(--c5)'))}
+   </div>
+   ${panel(B.key==='home'?'Planned vs. actual spending by month':'Planned vs. actual costs by month',`<div class="legend" style="margin-bottom:6px"><span><i style="background:var(--c3)"></i>Planned</span><span><i style="background:var(--c1)"></i>Actual</span></div>
+     ${bars(M.slice(0,CUR+1),[M.slice(0,CUR+1).map((_,i)=>bT(E,'plan',i)+bT(N,'plan',i)),spent],['var(--c3)','var(--c1)'])}`)}
+  </div>`;
+};
+
+render();
+</script>

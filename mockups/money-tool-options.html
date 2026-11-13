@@ -1,0 +1,586 @@
+<title>Studio Money Mockups</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&family=Caveat:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sticky three-way switcher (review / studio / home), each idea shows three option tabs; options render as framed mockups with a "why pick this" note beside them. */
+:root{
+  --bg:#f4f6f9; --surface:#ffffff; --sunk:#eef1f5; --ink:#1c2632; --muted:#5d6979; --line:#dce2ea;
+  --accent:#33617f; --accent-ink:#ffffff; --accent-soft:#e2ecf3;
+  --rose:#a95d70; --rose-soft:#f6e7eb;
+  --good:#2c7a57; --good-soft:#e2f2ea; --warn:#a86c12; --warn-soft:#fbf0dc; --bad:#b0463a;
+  --paper:#fcfbf7; --paper-line:#e9e5d8; --pen:#2a4f8f;
+  --display:"Bricolage Grotesque", "Figtree", system-ui, sans-serif;
+  --body:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --hand:"Caveat", "Segoe Print", "Bradley Hand", cursive;
+  --mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11161c; --surface:#19212a; --sunk:#151c24; --ink:#e6ebf1; --muted:#9aa6b4; --line:#2a3541;
+  --accent:#86b6d6; --accent-ink:#0f1a22; --accent-soft:#1d3241;
+  --rose:#e29eb0; --rose-soft:#3a2530;
+  --good:#6fc79d; --good-soft:#18352a; --warn:#e5b25c; --warn-soft:#3a2d16; --bad:#ec8576;
+  --paper:#1d232b; --paper-line:#2e3742; --pen:#9cc0ff; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161c; --surface:#19212a; --sunk:#151c24; --ink:#e6ebf1; --muted:#9aa6b4; --line:#2a3541;
+  --accent:#86b6d6; --accent-ink:#0f1a22; --accent-soft:#1d3241;
+  --rose:#e29eb0; --rose-soft:#3a2530;
+  --good:#6fc79d; --good-soft:#18352a; --warn:#e5b25c; --warn-soft:#3a2d16; --bad:#ec8576;
+  --paper:#1d232b; --paper-line:#2e3742; --pen:#9cc0ff; color-scheme:dark}
+
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:1120px;margin:0 auto}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(28px,4.5vw,40px);font-weight:700}
+h2{font-size:22px;font-weight:700}
+h3{font-size:17px;font-weight:600}
+p{margin:0}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{padding-top:32px;display:grid;gap:10px}
+header.top p{max-width:68ch;color:var(--muted)}
+.sample{display:inline-flex;gap:6px;align-items:center;font-size:12px;font-weight:600;color:var(--warn);background:var(--warn-soft);padding:3px 10px;border-radius:999px;width:fit-content}
+
+nav.ideas{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:14px;margin-top:18px;border-bottom:1px solid var(--line)}
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.seg a{text-decoration:none;color:var(--ink);padding:9px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:14px;display:flex;gap:8px;align-items:baseline}
+.seg a small{color:var(--muted);font-weight:500}
+.seg a[aria-current="page"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.seg a[aria-current="page"] small{color:var(--accent-ink);opacity:.8}
+
+.idea-head{display:grid;gap:6px;margin:28px 0 16px}
+.idea-head p{max-width:72ch;color:var(--muted)}
+.opts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.opts button{background:transparent;border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-weight:600;font-size:14px}
+.opts button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:24px;align-items:start}
+@media (max-width:880px){.stage{grid-template-columns:minmax(0,1fr)}}
+.why{display:grid;gap:12px;font-size:14px;position:sticky;top:90px}
+@media (max-width:880px){.why{position:static}}
+.why ul{margin:0;padding-left:18px;display:grid;gap:4px}
+.why .fit{background:var(--accent-soft);border-radius:10px;padding:12px 14px}
+.why .fit b{display:block;margin-bottom:4px}
+
+.frame{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+.g4{grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.p-auto{background:var(--sunk);color:var(--muted)}
+.p-sug{background:var(--accent-soft);color:var(--accent)}
+.p-ask{background:var(--warn-soft);color:var(--warn)}
+.p-done{background:var(--good-soft);color:var(--good)}
+.tile .v{font-family:var(--display);font-size:28px;font-weight:700;line-height:1.1}
+.tile .d{font-size:13px;color:var(--muted)}
+.up{color:var(--good)} .down{color:var(--bad)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+td.num,td.r{white-space:nowrap}
+td.r,th.r{text-align:right}
+.bar{height:8px;border-radius:99px;background:var(--sunk);overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:99px;background:var(--accent)}
+.bar.over>i{background:var(--bad)}
+.bar.rose>i{background:var(--rose)}
+.bar.good>i{background:var(--good)}
+svg text{fill:var(--muted);font-family:var(--body);font-size:11px}
+svg .gridl{stroke:var(--line);stroke-width:1}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+/* Review A: phone cards */
+.phone{width:100%;max-width:370px;margin:0 auto;border:10px solid var(--ink);border-radius:36px;background:var(--bg);padding:18px 16px;min-height:600px;display:flex;flex-direction:column;gap:14px}
+.progress{display:grid;gap:6px;font-size:13px}
+.tx{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;display:grid;gap:12px}
+.tx .amt{font-family:var(--display);font-size:34px;font-weight:700}
+.tx .who{font-weight:600;font-size:16px}
+.tx .hint{font-size:13px;background:var(--sunk);border-radius:10px;padding:8px 10px;color:var(--muted)}
+.tx .q{font-size:17px;font-weight:600;font-family:var(--display)}
+.btn{display:block;width:100%;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px;font-weight:600;text-align:left}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btns{display:grid;gap:8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 11px;font-size:13px;font-weight:500}
+.chips button:hover{border-color:var(--accent)}
+.checklist{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.checklist li{display:flex;gap:10px;align-items:flex-start;font-size:14px}
+.checklist .ok{flex:none;width:22px;height:22px;border-radius:50%;background:var(--good);color:var(--surface);display:grid;place-items:center;font-size:13px;font-weight:700}
+.checklist .opt{background:var(--warn)}
+
+/* Review B: sheet */
+.sheet td select{font:inherit;font-size:13px;padding:5px 6px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--ink);max-width:220px}
+.sheet tr.ask td{background:var(--warn-soft)}
+.sheet tr.done td{background:transparent}
+.sheet .desc{font-family:var(--mono);font-size:12.5px}
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+
+/* Review C: paper */
+.paper{background:var(--paper);border:1px solid var(--paper-line);border-radius:4px;padding:28px clamp(16px,4vw,40px);box-shadow:0 1px 0 var(--paper-line),0 8px 24px -16px rgba(0,0,0,.25)}
+.paper table{font-family:var(--mono);font-size:13px}
+.paper td,.paper th{border-bottom:1px dashed var(--paper-line)}
+.paper .cat{font-family:var(--hand);font-size:21px;color:var(--pen);line-height:1;white-space:nowrap}
+.tick{width:26px;height:26px;border:1.5px solid var(--muted);border-radius:4px;background:transparent;font-family:var(--hand);font-size:24px;color:var(--pen);line-height:1;padding:0}
+.acct-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.stamp{font-family:var(--hand);font-size:26px;color:var(--good);border:2px solid var(--good);border-radius:8px;padding:2px 12px;transform:rotate(-3deg);display:inline-block}
+
+/* Business letter */
+.letter{max-width:66ch;display:grid;gap:14px;font-size:16px;line-height:1.65}
+.letter h2{font-size:26px}
+.callout{border-left:3px solid var(--rose);padding:4px 0 4px 14px}
+
+/* Home jars */
+.jars{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:16px}
+.jar{display:grid;gap:6px;justify-items:center;text-align:center;font-size:13px}
+.jar .glass{width:84px;height:110px;border:2px solid var(--line);border-radius:14px 14px 22px 22px;position:relative;overflow:hidden;background:var(--surface)}
+.jar .glass i{position:absolute;inset:auto 0 0 0;background:var(--accent-soft);border-top:2px solid var(--accent)}
+.jar.low .glass i{background:var(--warn-soft);border-top-color:var(--warn)}
+.jar.empty .glass i{background:var(--rose-soft);border-top-color:var(--bad)}
+.jar b{font-family:var(--display);font-size:18px}
+
+/* Home calendar */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal .dow{font-size:11px;text-transform:uppercase;color:var(--muted);text-align:center;font-weight:600}
+.cal .day{min-height:76px;border:1px solid var(--line);border-radius:8px;padding:5px;font-size:11px;display:flex;flex-direction:column;gap:3px;background:var(--surface);min-width:0}
+.cal .day .n{font-weight:700;font-size:12px}
+.cal .day.blank{background:transparent;border-color:transparent}
+.cal .ev{border-radius:4px;padding:1px 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal .in{background:var(--good-soft);color:var(--good)}
+.cal .out{background:var(--rose-soft);color:var(--rose)}
+.cal .today{outline:2px solid var(--accent)}
+@media (max-width:560px){.cal .day{min-height:54px}.cal .ev{font-size:0;height:6px;padding:0}}
+
+.foot{margin-top:40px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+@media (prefers-reduced-motion:no-preference){.tx{animation:rise .25s ease}@keyframes rise{from{transform:translateY(6px);opacity:.6}to{transform:none;opacity:1}}}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <span class="sample">Sample data, made up for these mockups</span>
+  <h1>Studio money, three ways each</h1>
+  <p>Three tools we talked about, each drawn three different ways. Click around: the buttons work. Nothing here is real data. The point is to find the layout that feels calm and clear to you, then build that one.</p>
+</header>
+
+<nav class="ideas" aria-label="Ideas">
+  <div class="seg">
+    <a href="#review" data-v="review">1. Sorting transactions <small>monthly close</small></a>
+    <a href="#studio" data-v="studio">2. Studio reports <small>replaces the bookkeeper</small></a>
+    <a href="#home" data-v="home">3. Home budget <small>our personal money</small></a>
+  </div>
+</nav>
+
+<main id="app"></main>
+
+<p class="foot">Mockups only. In the real tool, transactions come in from your bank and card accounts automatically, and everything you sort here would also land in Xero (or replace it).</p>
+</div>
+
+<script>
+const $ = (s, el=document) => el.querySelector(s);
+const fmt = (n, d=0) => (n<0?'−':'') + '$' + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const k = n => n===0 ? '$0' : '$' + (n/1000).toFixed(n%1000===0?0:1) + 'k';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- shared sample data ---------- */
+const CATS = ['Client income','Second-shooting income','Second shooters (contract labor)','Albums & prints','Gear & equipment','Software & subscriptions','Travel & mileage','Meals (client meetings)','Marketing & ads','Education & workshops','Insurance','Phone & internet','Bank & card fees','Personal (not studio)','Transfer between my accounts','Owner’s pay to home'];
+
+const TX = [
+  {id:1,d:'Oct 2',acct:'Studio Checking ••4417',desc:'STRIPE TRANSFER',amt:2400,sug:'Client income',st:'sug',note:'Matches the Dubsado invoice for Priya & Sam (final payment).'},
+  {id:2,d:'Oct 3',acct:'Chase Ink ••0912',desc:'ADOBE *CREATIVE CLOUD',amt:-59.99,sug:'Software & subscriptions',st:'sug',note:'Same as every month.'},
+  {id:3,d:'Oct 3',acct:'Amex Gold ••1003',desc:'TARGET 00012',amt:-84.12,sug:null,st:'ask',q:'Was this Target trip for the studio or for home?'},
+  {id:4,d:'Oct 6',acct:'Studio Checking ••4417',desc:'VENMO PAYMENT M ORTIZ',amt:-600,sug:'Second shooters (contract labor)',st:'sug',note:'Maya Ortiz second-shot Hillside Barn on Oct 4. You’ve paid her $1,850 this year.'},
+  {id:5,d:'Oct 9',acct:'Chase Ink ••0912',desc:'SHELL OIL 5741',amt:-62.40,sug:'Travel & mileage',st:'sug',note:'Your calendar shows a session in Fairview that afternoon.'},
+  {id:6,d:'Oct 12',acct:'Amex Gold ••1003',desc:'AMAZON MKTPLACE',amt:-146.89,sug:null,st:'ask',split:true,q:'Amazon order with 2 items. One looks like SD cards ($89.99). Split it?'},
+  {id:7,d:'Oct 15',acct:'Studio Checking ••4417',desc:'PIC-TIME PAYOUT',amt:318.50,sug:'Client income',st:'sug',note:'Print store sales from 3 galleries.'},
+  {id:8,d:'Oct 21',acct:'Chase Ink ••0912',desc:'THE PRESS CAFE',amt:-38.20,sug:'Meals (client meetings)',st:'sug',note:'Calendar: “Consult: Lena & Chris” at 10am.'},
+];
+const AUTO = [
+  {d:'Oct 1',acct:'Studio Checking ••4417',desc:'TRANSFER TO HOME CHK',amt:-6000,cat:'Owner’s pay to home'},
+  {d:'Oct 1',acct:'Chase Ink ••0912',desc:'PIC-TIME SUBSCRIPTION',amt:-50,cat:'Software & subscriptions'},
+  {d:'Oct 4',acct:'Chase Ink ••0912',desc:'DUBSADO.COM',amt:-40,cat:'Software & subscriptions'},
+  {d:'Oct 8',acct:'Studio Checking ••4417',desc:'PAYMENT CHASE CARD',amt:-1284.33,cat:'Transfer between my accounts'},
+  {d:'Oct 8',acct:'Chase Ink ••0912',desc:'PAYMENT THANK YOU',amt:1284.33,cat:'Transfer between my accounts'},
+  {d:'Oct 14',acct:'Studio Checking ••4417',desc:'TRANSFER TO TAX SAVINGS',amt:-3000,cat:'Transfer between my accounts'},
+];
+
+/* ---------- tiny SVG chart helpers ---------- */
+function niceMax(v){const p=Math.pow(10,Math.floor(Math.log10(v)));const m=v/p;return (m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*p;}
+function grouped(labels, series, colors, h=220){
+  const W=640,H=h,L=44,R=8,T=10,B=26;
+  const max=niceMax(Math.max(...series.flat()));
+  const y=v=>T+(H-T-B)*(1-v/max), bw=(W-L-R)/labels.length;
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="bar chart">`;
+  for(let i=0;i<=5;i++){const v=max*i/5;s+=`<line class="gridl" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${k(v)}</text>`;}
+  labels.forEach((lb,i)=>{const n=series.length,gw=bw*.7,w=gw/n,x0=L+i*bw+bw*.15;
+    series.forEach((ser,j)=>{const v=ser[i];if(v==null)return;s+=`<rect x="${x0+j*w}" y="${y(v)}" width="${w-2}" height="${y(0)-y(v)}" rx="2" fill="${colors[j]}"/>`;});
+    s+=`<text x="${L+i*bw+bw/2}" y="${H-8}" text-anchor="middle">${lb}</text>`;});
+  return s+'</svg>';
+}
+function hbars(rows,color='var(--accent)'){
+  const max=Math.max(...rows.map(r=>r[1]));
+  return `<div class="grid" style="gap:9px">${rows.map(([n,v])=>`<div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.6fr) auto;gap:10px;align-items:center;font-size:13px"><span>${n}</span><div class="bar"><i style="width:${v/max*100}%;background:${color}"></i></div><span class="num">${fmt(v)}</span></div>`).join('')}</div>`;
+}
+function lines(labels, series, colors, {h=220,dash=[],max}={}){
+  const W=640,H=h,L=44,R=12,T=10,B=26;
+  max=max||niceMax(Math.max(...series.flat().filter(v=>v!=null)));
+  const x=i=>L+(W-L-R)*i/(labels.length-1), y=v=>T+(H-T-B)*(1-v/max);
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="line chart">`;
+  for(let i=0;i<=4;i++){const v=max*i/4;s+=`<line class="gridl" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${k(v)}</text>`;}
+  const step=Math.ceil(labels.length/12);
+  labels.forEach((lb,i)=>{if(i%step===0||i===labels.length-1)s+=`<text x="${x(i)}" y="${H-8}" text-anchor="middle">${lb}</text>`;});
+  series.forEach((ser,j)=>{const pts=ser.map((v,i)=>v==null?null:[x(i),y(v)]).filter(Boolean);
+    const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+    if(j===0&&!dash[0]) s+=`<path d="${d} L${pts.at(-1)[0]} ${y(0)} L${pts[0][0]} ${y(0)} Z" fill="${colors[j]}" opacity=".12"/>`;
+    s+=`<path d="${d}" fill="none" stroke="${colors[j]}" stroke-width="2.5" ${dash[j]?'stroke-dasharray="6 5"':''} stroke-linejoin="round"/>`;
+    const e=pts.at(-1); if(!dash[j]) s+=`<circle cx="${e[0]}" cy="${e[1]}" r="4.5" fill="${colors[j]}"/>`;});
+  return s+'</svg>';
+}
+function donut(rows, colors, size=180, center=''){
+  const tot=rows.reduce((a,r)=>a+r[1],0), r=size/2-14, c=2*Math.PI*r; let off=0;
+  let s=`<svg viewBox="0 0 ${size} ${size}" width="${size}" style="max-width:100%" role="img" aria-label="donut chart"><g transform="rotate(-90 ${size/2} ${size/2})">`;
+  rows.forEach((row,i)=>{const len=row[1]/tot*c;s+=`<circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${colors[i%colors.length]}" stroke-width="22" stroke-dasharray="${Math.max(len-2,0)} ${c}" stroke-dashoffset="${-off}"/>`;off+=len;});
+  return s+`</g><text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" style="font-size:20px;font-weight:700;fill:var(--ink);font-family:var(--display)">${center}</text></svg>`;
+}
+const PAL=['var(--accent)','var(--rose)','var(--good)','var(--warn)','var(--muted)','var(--pen)','var(--bad)'];
+
+/* ---------- studio numbers ---------- */
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const REV=[4200,6100,8400,11800,17500,19200,14600,16900,21300,22800];
+const EXP=[3100,2800,3600,4900,6800,7400,5900,6600,8100,8700];
+const sum=a=>a.reduce((x,y)=>x+y,0);
+const revYTD=sum(REV), expYTD=sum(EXP), profYTD=revYTD-expYTD;
+const TAXRATE=.30, taxNeeded=profYTD*TAXRATE, taxSaved=22000;
+const EXPCATS=[['Second shooters',14200],['Albums & prints',9800],['Travel & mileage',7400],['Gear & equipment',6900],['Software & subscriptions',6350],['Marketing & ads',4600],['Education',2800],['Insurance',1950],['Bank & card fees',1550],['Meals',1250],['Phone & internet',1100]];
+const WED=[
+  {c:'Avery & Jordan',d:'Oct 4',v:'Hillside Barn',price:6800,second:600,album:520,travel:140,fees:210,hrs:38},
+  {c:'Priya & Sam',d:'Sep 27',v:'The Glasshouse',price:8200,second:700,album:880,travel:60,fees:250,hrs:44},
+  {c:'Mia & Theo',d:'Sep 13',v:'Cedar Lake Lodge',price:5400,second:600,album:0,travel:410,fees:170,hrs:36},
+  {c:'Lena & Chris',d:'Aug 30',v:'St. Anne’s + Hotel Marlow',price:7600,second:650,album:880,travel:90,fees:230,hrs:47},
+  {c:'Noor & Ethan',d:'Aug 16',v:'Courthouse + dinner',price:3200,second:0,album:0,travel:30,fees:95,hrs:14},
+  {c:'Rosa & Dev',d:'Jul 19',v:'Willow Creek Farm',price:6100,second:600,album:520,travel:260,fees:190,hrs:41},
+].map(w=>({...w,cost:w.second+w.album+w.travel+w.fees,profit:w.price-w.second-w.album-w.travel-w.fees}));
+const SUBS=[['Adobe Photography plan',240],['Pic-Time',600],['Dubsado',400],['Xero',504],['WordPress hosting',300],['Later (social scheduling)',300],['Canva Pro',120],['Calendly',144],['Dropbox',240],['Backblaze',99]];
+
+/* ---------- home numbers ---------- */
+const HOME_IN=[['Your paycheck',7400],['Studio owner’s pay',6000]];
+const BUDGET=[['Mortgage',2400,2400],['Groceries',900,812],['Eating out',350,418],['Utilities',320,296],['Car & gas',450,372],['Insurance',280,280],['Subscriptions',90,104],['Shopping',300,188],['Fun & travel',400,145],['Gifts',150,60],['Health',200,95]];
+const GOALS=[['Emergency fund',18000,14200],['Italy trip, June',6000,3900],['New car fund',10000,2600]];
+
+/* ---------- views ---------- */
+const VIEWS={
+ review:{title:'Sorting transactions',
+  intro:'Each month, every transaction in every account needs a category. The tool sorts the easy ones on its own (transfers between your accounts, Adobe, Pic-Time, your owner’s pay) and only asks you about the rest. These are three ways to do the asking.',
+  opts:[
+   {name:'A. One at a time',render:reviewCards,
+    why:['One transaction on screen, nothing else','Plain questions instead of accounting words','Progress bar so you know how much is left','Ends with a checklist that says the month is done'],
+    fit:'Good if you want it to feel like a short quiz you can do on your phone in 10 minutes.'},
+   {name:'B. Spreadsheet',render:reviewSheet,
+    why:['Everything visible in rows, like a budget template','Suggested categories already filled in','Rows that need you are highlighted','Filter to just the ones left'],
+    fit:'Good if you like seeing the whole month at once and sorting it top to bottom on your laptop.'},
+   {name:'C. Paper statement',render:reviewPaper,
+    why:['Looks like your printed statement, one account at a time','Categories already written in the margin','Tick each line as you check it','Prints as a PDF packet if you want to use a pen'],
+    fit:'Good if the “print it all and go line by line” way is what feels right.'}]},
+ studio:{title:'Studio reports',
+  intro:'What the bookkeeper used to hand you: profit and loss, where the money goes, what to cut, and whether you’re on track. Three ways to show the same numbers.',
+  opts:[
+   {name:'A. Quarterly letter',render:studioLetter,
+    why:['Reads like a note from a bookkeeper','A few small charts, no wall of numbers','Ends with a short list of things to look at'],
+    fit:'Good if you want the story first and the numbers only where they help.'},
+   {name:'B. Full dashboard',render:studioDash,
+    why:['Every number on one screen','Month-by-month income and spending','Profit for each wedding, with your real hourly rate','Where the money goes by category'],
+    fit:'Good if you like digging in and comparing things yourself.'},
+   {name:'C. Goals & taxes',render:studioGoals,
+    why:['Starts with the goal you set for the year','Shows if you’re ahead or behind, and why','Tells you exactly how much to move to tax savings','Lists subscriptions you could cut'],
+    fit:'Good if what you mostly want is “am I OK, and what do I do next?”'}]},
+ home:{title:'Home budget',
+  intro:'Our household money, with your studio owner’s pay coming in as a steady monthly amount. Three ways to look at it, starting with one modeled on the spreadsheet template you liked.',
+  opts:[
+   {name:'A. Budget template',render:homeTemplate,
+    why:['Planned vs. spent for every category','Income, spending and savings at the top','Savings goals with progress bars','Close to the template you sent'],
+    fit:'Good if the spreadsheet template is the feel you want.'},
+   {name:'B. Envelopes',render:homeJars,
+    why:['Each category is a jar that empties as we spend','You can see what’s left at a glance','One number: what’s safe to spend this week'],
+    fit:'Good if you think in “how much is left” more than in totals.'},
+   {name:'C. Month calendar',render:homeCal,
+    why:['Bills and paydays on the days they happen','Running balance across the month','Shows the tight weeks before they arrive'],
+    fit:'Good if timing is what causes the stress (“will the money be there when the bill hits?”).'}]},
+};
+const state={view:'review',opt:{review:0,studio:0,home:0}};
+try{const s=JSON.parse(localStorage.getItem('smm-opt')||'null');if(s)Object.assign(state.opt,s);}catch(e){}
+
+function render(){
+  const v=VIEWS[state.view], oi=state.opt[state.view], o=v.opts[oi];
+  document.querySelectorAll('.seg a').forEach(a=>a.setAttribute('aria-current',a.dataset.v===state.view?'page':'false'));
+  $('#app').innerHTML=`
+   <section class="idea-head"><span class="eyebrow">Idea ${Object.keys(VIEWS).indexOf(state.view)+1} of 3</span><h2>${v.title}</h2><p>${v.intro}</p></section>
+   <div class="opts" role="group" aria-label="Options">${v.opts.map((x,i)=>`<button data-o="${i}" aria-pressed="${i===oi}">${x.name}</button>`).join('')}</div>
+   <div class="stage"><div id="mock" style="min-width:0"></div>
+     <aside class="why"><div class="eyebrow">What this one does</div><ul>${o.why.map(w=>`<li>${w}</li>`).join('')}</ul><div class="fit"><b>Pick this if</b>${o.fit}</div></aside></div>`;
+  $('#app').querySelectorAll('.opts button').forEach(b=>b.onclick=()=>{state.opt[state.view]=+b.dataset.o;try{localStorage.setItem('smm-opt',JSON.stringify(state.opt))}catch(e){};render();});
+  o.render($('#mock'));
+}
+function route(){const h=location.hash.slice(1);state.view=VIEWS[h]?h:'review';render();}
+window.addEventListener('hashchange',route);
+
+/* ===== Review A: cards ===== */
+function reviewCards(el){
+  let i=0, picked=false; const answers=[];
+  const total=TX.length;
+  const draw=()=>{
+    if(i>=total){el.innerHTML=`<div class="phone"><div class="eyebrow">October 2026</div>
+      <h2 style="font-size:26px">October is closed</h2>
+      <ul class="checklist">
+        <li><span class="ok">✓</span><span>All 8 accounts match their October statements</span></li>
+        <li><span class="ok">✓</span><span>49 of 49 transactions sorted (41 sorted for you, 8 by you)</span></li>
+        <li><span class="ok">✓</span><span>9 transfers between your accounts matched on both sides</span></li>
+        <li><span class="ok">✓</span><span>$3,000 moved to tax savings (you’re on track)</span></li>
+        <li><span class="ok opt">!</span><span>2 receipts missing. Optional, but nice for anything over $75.</span></li>
+      </ul>
+      <div class="tx"><div class="eyebrow">Your answers became rules</div><p style="font-size:14px">Next month, Venmo payments to Maya Ortiz will be sorted as second-shooter pay automatically.</p></div>
+      <button class="btn" id="restart">Start over</button></div>`;
+      $('#restart',el).onclick=()=>{i=0;draw();};return;}
+    const t=TX[i];
+    const pct=Math.round(i/total*100);
+    let body='';
+    if(t.st==='ask' && t.split){
+      body=`<p class="q">${t.q}</p><div class="btns">
+        <button class="btn primary" data-a="split">Split: $89.99 studio gear + $56.90 home</button>
+        <button class="btn" data-a="Gear & equipment">All of it was for the studio</button>
+        <button class="btn" data-a="Personal (not studio)">All of it was for home</button></div>`;
+    } else if(t.st==='ask'){
+      body=picked?`<p class="q">What was it for?</p><div class="chips">${CATS.filter(c=>!/income|Transfer|Owner/.test(c)).map(c=>`<button data-a="${c}">${c}</button>`).join('')}</div>`
+        :`<p class="q">${t.q}</p><div class="btns"><button class="btn primary" data-a="studio">For the studio</button><button class="btn" data-a="Personal (not studio)">For home</button></div>`;
+    } else {
+      body=`${t.note?`<p class="hint">${t.note}</p>`:''}<div class="btns">
+        <button class="btn primary" data-a="${t.sug}">Yes: ${t.sug}</button>
+        ${picked?`<div class="chips">${CATS.map(c=>`<button data-a="${c}">${c}</button>`).join('')}</div>`:`<button class="btn" data-a="other">Something else</button>`}
+        <button class="btn" data-a="Personal (not studio)">This was personal</button></div>`;
+    }
+    el.innerHTML=`<div class="phone">
+      <div class="progress"><div style="display:flex;justify-content:space-between"><b>October review</b><span class="muted num">${total-i} left</span></div><div class="bar good"><i style="width:${pct}%"></i></div>
+      <span class="muted">41 already sorted for you. These ${total} need a quick look.</span></div>
+      <div class="tx"><div style="display:flex;justify-content:space-between;align-items:center"><span class="muted" style="font-size:13px">${t.d} · ${t.acct}</span><span class="pill ${t.st==='ask'?'p-ask':'p-sug'}">${t.st==='ask'?'Needs you':'Suggested'}</span></div>
+        <div><div class="amt num" style="color:${t.amt>0?'var(--good)':'var(--ink)'}">${t.amt>0?'+':''}${fmt(t.amt,2)}</div><div class="who">${t.desc}</div></div>
+        ${body}</div>
+      ${i>0?`<button class="btn" id="back" style="text-align:center;background:transparent;border:none;color:var(--muted)">← Back</button>`:''}</div>`;
+    el.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{const a=b.dataset.a;
+      if(a==='other'||a==='studio'){picked=true;draw();return;}
+      answers[i]=a;i++;picked=false;draw();});
+    const bk=$('#back',el); if(bk) bk.onclick=()=>{i--;picked=false;draw();};
+  };
+  draw();
+}
+
+/* ===== Review B: sheet ===== */
+function reviewSheet(el){
+  const rows=[...AUTO.map(a=>({...a,st:'auto'})),...TX.map(t=>({...t,cat:t.sug||'',st:t.st}))].sort((a,b)=>parseInt(a.d.slice(4))-parseInt(b.d.slice(4)));
+  let filter='all';
+  const draw=()=>{
+    const left=rows.filter(r=>r.st==='ask'&&!r.cat).length, sugLeft=rows.filter(r=>r.st==='sug').length;
+    const shown=rows.filter(r=>filter==='all'||(filter==='ask'?r.st==='ask':filter==='sug'?r.st==='sug':r.st==='auto'||r.st==='done'));
+    const opts=c=>`<option value="">Choose…</option>`+CATS.map(x=>`<option ${x===c?'selected':''}>${x}</option>`).join('');
+    const label={auto:['p-auto','Sorted for you'],sug:['p-sug','Suggested'],ask:['p-ask','Needs you'],done:['p-done','Done']};
+    el.innerHTML=`<div class="frame sheet">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:baseline;margin-bottom:12px">
+        <h3>October 2026 · all accounts</h3>
+        <span class="num" style="font-size:14px"><b>${left}</b> need you · <b>${sugLeft}</b> to confirm · ${rows.length} shown of 49</span></div>
+      <div class="filters">${[['all','All'],['ask','Needs you'],['sug','Suggested'],['auto','Sorted / done']].map(([f,n])=>`<button class="pill ${filter===f?'p-sug':'p-auto'}" style="border:0;padding:5px 12px" data-f="${f}">${n}</button>`).join('')}</div>
+      <div class="scroll"><table><thead><tr><th>Date</th><th>Account</th><th>Description</th><th class="r">Amount</th><th>Category</th><th>Status</th><th></th></tr></thead><tbody>
+      ${shown.map(r=>{const idx=rows.indexOf(r);const L=label[r.st];return `<tr class="${r.st==='ask'?'ask':''}">
+        <td class="num" style="white-space:nowrap">${r.d}</td><td style="white-space:nowrap;font-size:13px" class="muted">${r.acct.replace(' ••',' ')}</td>
+        <td class="desc">${esc(r.desc)}${r.q?`<div class="muted" style="font-family:var(--body);font-size:12px">${r.q}</div>`:''}</td>
+        <td class="r num" style="color:${r.amt>0?'var(--good)':'inherit'};white-space:nowrap">${fmt(r.amt,2)}</td>
+        <td>${r.st==='auto'?`<span style="font-size:13px">${r.cat}</span>`:`<select data-i="${idx}" aria-label="Category for ${esc(r.desc)}">${opts(r.cat)}</select>`}</td>
+        <td><span class="pill ${L[0]}">${L[1]}</span></td>
+        <td>${r.st==='sug'?`<button class="pill p-done" style="border:0" data-ok="${idx}">✓ OK</button>`:''}</td></tr>`}).join('')}
+      </tbody></table></div>
+      <p class="muted" style="font-size:13px;margin-top:10px">Pick a category or press OK on a suggestion and the row turns done. Transfers between your accounts are already matched, so they never count as income or spending.</p></div>`;
+    el.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{filter=b.dataset.f;draw();});
+    el.querySelectorAll('select').forEach(s=>s.onchange=()=>{const r=rows[s.dataset.i];r.cat=s.value;if(s.value)r.st='done';draw();});
+    el.querySelectorAll('[data-ok]').forEach(b=>b.onclick=()=>{rows[b.dataset.ok].st='done';draw();});
+  };
+  draw();
+}
+
+/* ===== Review C: paper ===== */
+function reviewPaper(el){
+  const accts=['Studio Checking ••4417','Chase Ink ••0912','Amex Gold ••1003'];
+  const open={'Studio Checking ••4417':18240.55,'Chase Ink ••0912':-1284.33,'Amex Gold ••1003':-412.08};
+  let a=0; const ticked=new Set();
+  const draw=()=>{
+    const acct=accts[a];
+    const rows=[...AUTO,...TX.map(t=>({...t,cat:t.sug||(t.split?'Split: gear $89.99 / home $56.90':'Personal (not studio)')}))].filter(r=>r.acct===acct).sort((x,y)=>parseInt(x.d.slice(4))-parseInt(y.d.slice(4)));
+    let bal=open[acct]; const close=rows.reduce((s,r)=>s+r.amt,bal);
+    const done=rows.every((r,j)=>ticked.has(acct+j));
+    el.innerHTML=`<div class="acct-tabs">${accts.map((x,j)=>`<button class="pill ${j===a?'p-sug':'p-auto'}" style="border:0;padding:6px 12px" data-a="${j}">${x}</button>`).join('')}</div>
+     <div class="paper">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;margin-bottom:16px">
+        <div><div class="eyebrow">Statement review · page ${a+1} of 8</div><h3 style="font-size:20px">${acct}</h3><div class="muted" style="font-size:13px">October 1 – 31, 2026</div></div>
+        <div style="text-align:right;font-family:var(--mono);font-size:13px"><div>Opening balance <b class="num">${fmt(open[acct],2)}</b></div><div>Closing balance <b class="num">${fmt(close,2)}</b></div></div></div>
+      <div class="scroll"><table><thead><tr><th style="width:36px">✓</th><th>Date</th><th>Description</th><th class="r">Amount</th><th>Category</th></tr></thead><tbody>
+      ${rows.map((r,j)=>`<tr><td><button class="tick" data-t="${acct+j}" aria-label="Mark checked" aria-pressed="${ticked.has(acct+j)}">${ticked.has(acct+j)?'✓':''}</button></td><td>${r.d}</td><td>${esc(r.desc)}</td><td class="r num">${fmt(r.amt,2)}</td><td class="cat">${r.cat||r.sug}</td></tr>`).join('')}
+      </tbody></table></div>
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-top:18px">
+        <span class="muted" style="font-size:13px">Closing balance matches the bank’s statement. Tick every line to finish this page.</span>
+        ${done?`<span class="stamp">Page done ✓</span>`:`<span class="muted num" style="font-family:var(--hand);font-size:22px">${rows.filter((r,j)=>ticked.has(acct+j)).length} of ${rows.length} checked</span>`}</div>
+     </div>`;
+    el.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{a=+b.dataset.a;draw();});
+    el.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{const t=b.dataset.t;ticked.has(t)?ticked.delete(t):ticked.add(t);draw();});
+  };
+  draw();
+}
+
+/* ===== Studio A: letter ===== */
+function studioLetter(el){
+  const q=(a,s,e)=>sum(a.slice(s,e));
+  const q3r=q(REV,6,9),q3e=q(EXP,6,9),q2r=q(REV,3,6),q2e=q(EXP,3,6),q3p=q3r-q3e,q2p=q2r-q2e, lastQ3=26100;
+  el.innerHTML=`<div class="frame"><article class="letter">
+    <div><div class="eyebrow">Quarterly report · July to September 2026</div><h2>A strong summer, and a little more spent on travel</h2></div>
+    <p>You brought in <b class="num">${fmt(q3r)}</b> this quarter and spent <b class="num">${fmt(q3e)}</b>, so the studio made <b class="num">${fmt(q3p)}</b> in profit. That’s <b class="up num">${fmt(q3p-q2p)} more</b> than spring and <b class="up num">${fmt(q3p-lastQ3)} more</b> than the same months last year.</p>
+    <div class="grid g2" style="font-size:14px">
+      <div class="card"><h3 style="font-size:15px;margin-bottom:6px">Profit by quarter</h3>${grouped(['Q3 2025','Q1','Q2','Q3'],[[lastQ3,q(REV,0,3)-q(EXP,0,3),q2p,q3p]],['var(--accent)'],170)}</div>
+      <div class="card"><h3 style="font-size:15px;margin-bottom:10px">Where Q3 money went</h3>${hbars([['Second shooters',6300],['Albums & prints',4600],['Everything else',q3e-6300-4600-2650-1590],['Travel',2650],['Software',1590]])}</div>
+    </div>
+    <p class="callout">Your profit on each wedding averaged about <b class="num">${fmt(sum(WED.slice(0,4).map(w=>w.profit/w.hrs))/4)} per hour</b> once editing time is counted. The Cedar Lake wedding was the lowest because of $410 in travel and lodging.</p>
+    <h3>Things to look at</h3>
+    <ul style="margin:0;padding-left:20px;display:grid;gap:6px">
+      <li>Travel is up 38% from spring. Consider adding a travel fee for venues more than 60 miles away.</li>
+      <li>You pay for both Later and Canva. Canva now schedules posts, so Later ($300/year) may not be needed.</li>
+      <li>Set aside <b class="num">${fmt(q3p*TAXRATE)}</b> for this quarter’s taxes. Your September payment covered $8,800 of it, and the rest is already in tax savings.</li>
+    </ul>
+  </article></div>`;
+}
+
+/* ===== Studio B: dashboard ===== */
+function studioDash(el){
+  const booked=14500;
+  el.innerHTML=`<div class="grid">
+   <div class="grid g4">
+    <div class="card tile"><div class="eyebrow">Income so far</div><div class="v num">${fmt(revYTD)}</div><div class="d"><span class="up">▲ 12%</span> vs. last year</div></div>
+    <div class="card tile"><div class="eyebrow">Spent so far</div><div class="v num">${fmt(expYTD)}</div><div class="d"><span class="down">▲ 9%</span> vs. last year</div></div>
+    <div class="card tile"><div class="eyebrow">Profit so far</div><div class="v num">${fmt(profYTD)}</div><div class="d">${Math.round(profYTD/revYTD*100)}% of income kept</div></div>
+    <div class="card tile"><div class="eyebrow">Booked, not yet paid</div><div class="v num">${fmt(booked)}</div><div class="d">5 weddings &amp; 9 sessions left this year</div></div>
+   </div>
+   <div class="card"><div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;margin-bottom:8px"><h3>Income and spending by month</h3><div class="legend"><span><i style="background:var(--accent)"></i>Income</span><span><i style="background:var(--rose)"></i>Spending</span></div></div>
+     ${grouped(MONTHS.slice(0,10),[REV,EXP],['var(--accent)','var(--rose)'])}</div>
+   <div class="grid g2">
+    <div class="card"><h3 style="margin-bottom:12px">Spending by category, this year</h3>${hbars(EXPCATS,'var(--rose)')}</div>
+    <div class="card"><h3 style="margin-bottom:6px">Profit on each wedding</h3><p class="muted" style="font-size:13px;margin-bottom:8px">After second shooter, album, travel and gallery fees, divided by hours you worked.</p>
+     <div class="scroll"><table><thead><tr><th>Couple</th><th class="r">Price</th><th class="r">Costs</th><th class="r">Profit</th><th class="r">Per hour</th></tr></thead><tbody>
+     ${WED.map(w=>{const ph=w.profit/w.hrs;return `<tr><td><b>${w.c}</b><div class="muted" style="font-size:12px">${w.d} · ${w.v}</div></td><td class="r num">${fmt(w.price)}</td><td class="r num">${fmt(w.cost)}</td><td class="r num">${fmt(w.profit)}</td><td class="r num"><span class="pill ${ph>=150?'p-done':ph>=125?'p-sug':'p-ask'}">${fmt(ph)}</span></td></tr>`}).join('')}
+     </tbody></table></div></div>
+   </div></div>`;
+}
+
+/* ===== Studio C: goals ===== */
+function studioGoals(el){
+  const goal=100000;
+  const cum=REV.map((r,i)=>sum(REV.slice(0,i+1))-sum(EXP.slice(0,i+1)));
+  const lastYrShape=[.03,.07,.12,.19,.30,.43,.53,.64,.77,.88,.95,1];
+  const pace=lastYrShape.map(s=>s*goal);
+  const proj=[...Array(9).fill(null),cum[9],cum[9]+6400,cum[9]+6400+3600];
+  const ahead=cum[9]-pace[9];
+  const toMove=Math.round((taxNeeded-taxSaved)/10)*10;
+  let cut=new Set();
+  const draw=()=>{
+    const save=[...cut].reduce((s,i)=>s+SUBS[i][1],0);
+    el.innerHTML=`<div class="grid">
+    <div class="card" style="display:grid;gap:12px">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:baseline">
+        <div><div class="eyebrow">2026 goal: ${fmt(goal)} profit</div><h3 style="font-size:22px;font-family:var(--display)">You’re <span class="${ahead>=0?'up':'down'}">${fmt(Math.abs(ahead))} ${ahead>=0?'ahead of':'behind'}</span> where you need to be</h3></div>
+        <div class="legend"><span><i style="background:var(--accent)"></i>Profit so far</span><span><i style="background:var(--muted)"></i>Pace to hit the goal</span><span><i style="background:var(--good)"></i>Booked weddings</span></div></div>
+      ${lines(MONTHS,[[...cum,null,null],pace,proj],['var(--accent)','var(--muted)','var(--good)'],{dash:[0,1,1],max:120000})}
+      <p class="muted" style="font-size:14px">The pace line follows last year’s seasons, since most of your income lands May through October. With the weddings already booked you’ll finish around <b class="num" style="color:var(--ink)">${fmt(proj[11])}</b>.</p>
+    </div>
+    <div class="grid g2">
+      <div class="card" style="display:grid;gap:10px"><div class="eyebrow">Tax savings</div>
+        <h3 style="font-size:20px;font-family:var(--display)">Move <span class="num">${fmt(toMove)}</span> to tax savings this month</h3>
+        <div class="bar good" style="height:12px"><i style="width:${taxSaved/taxNeeded*100}%"></i></div>
+        <div class="muted num" style="font-size:13px">${fmt(taxSaved)} saved of ${fmt(taxNeeded)} needed (30% of profit)</div>
+        <table style="font-size:13px"><tbody>
+          <tr><td style="white-space:nowrap">Apr 15</td><td>Q1 estimated payment</td><td class="r num">$4,200</td><td><span class="pill p-done">Paid</span></td></tr>
+          <tr><td style="white-space:nowrap">Jun 15</td><td>Q2 estimated payment</td><td class="r num">$6,900</td><td><span class="pill p-done">Paid</span></td></tr>
+          <tr><td style="white-space:nowrap">Sep 15</td><td>Q3 estimated payment</td><td class="r num">$8,800</td><td><span class="pill p-done">Paid</span></td></tr>
+          <tr><td style="white-space:nowrap">Jan 15</td><td>Q4 estimated payment</td><td class="r num">≈ $5,600</td><td><span class="pill p-sug">Coming up</span></td></tr></tbody></table>
+      </div>
+      <div class="card" style="display:grid;gap:10px"><div class="eyebrow">Subscriptions · ${fmt(sum(SUBS.map(s=>s[1])))} a year</div>
+        <h3 style="font-size:20px;font-family:var(--display)">Tick any you’d drop: <span class="up num">${fmt(save)}</span> saved a year</h3>
+        <div class="grid" style="gap:4px">${SUBS.map((s,i)=>`<label style="display:flex;gap:10px;align-items:center;font-size:14px;padding:4px 0;border-bottom:1px solid var(--line)"><input type="checkbox" id="sub${i}" data-s="${i}" ${cut.has(i)?'checked':''}><span style="flex:1">${s[0]}</span><span class="num muted">${fmt(s[1])}/yr</span></label>`).join('')}</div>
+      </div>
+    </div></div>`;
+    el.querySelectorAll('[data-s]').forEach(c=>c.onchange=()=>{const i=+c.dataset.s;c.checked?cut.add(i):cut.delete(i);draw();});
+  };
+  draw();
+}
+
+/* ===== Home A: template ===== */
+function homeTemplate(el){
+  const inc=sum(HOME_IN.map(r=>r[1])), planned=sum(BUDGET.map(b=>b[1])), spent=sum(BUDGET.map(b=>b[2])), saving=inc-planned;
+  el.innerHTML=`<div class="grid">
+   <div class="grid g4">
+    <div class="card tile"><div class="eyebrow">Money in</div><div class="v num up">${fmt(inc)}</div><div class="d">Your pay + studio owner’s pay</div></div>
+    <div class="card tile"><div class="eyebrow">Spent so far</div><div class="v num">${fmt(spent)}</div><div class="d">of ${fmt(planned)} planned</div></div>
+    <div class="card tile"><div class="eyebrow">Going to savings</div><div class="v num">${fmt(saving)}</div><div class="d">${Math.round(saving/inc*100)}% of what came in</div></div>
+    <div class="card tile"><div class="eyebrow">Over budget</div><div class="v num down">1</div><div class="d">Eating out, by $68</div></div>
+   </div>
+   <div class="grid g2">
+    <div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px"><h3>October budget</h3><span class="muted" style="font-size:13px">Day 24 of 31</span></div>
+     <div class="scroll"><table><thead><tr><th>Category</th><th class="r">Planned</th><th class="r">Spent</th><th style="width:30%"></th><th class="r">Left</th></tr></thead><tbody>
+     ${BUDGET.map(([n,p,s])=>`<tr><td>${n}</td><td class="r num">${fmt(p)}</td><td class="r num">${fmt(s)}</td><td><div class="bar ${s>p?'over':''}"><i style="width:${Math.min(s/p,1)*100}%"></i></div></td><td class="r num ${s>p?'down':''}">${fmt(p-s)}</td></tr>`).join('')}
+     </tbody></table></div></div>
+    <div class="grid" style="align-content:start">
+     <div class="card" style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:center">${donut(BUDGET.map(b=>[b[0],b[2]]),PAL,180,fmt(spent))}
+       <div class="legend" style="display:grid;gap:4px;font-size:12px">${BUDGET.slice(0,7).map((b,i)=>`<span><i style="background:${PAL[i%PAL.length]}"></i>${b[0]}</span>`).join('')}</div></div>
+     <div class="card" style="display:grid;gap:12px"><h3>Savings goals</h3>
+      ${GOALS.map(([n,g,h])=>`<div style="display:grid;gap:5px"><div style="display:flex;justify-content:space-between;font-size:14px"><span>${n}</span><span class="num muted">${fmt(h)} / ${fmt(g)}</span></div><div class="bar rose"><i style="width:${h/g*100}%"></i></div></div>`).join('')}</div>
+    </div>
+   </div></div>`;
+}
+
+/* ===== Home B: jars ===== */
+function homeJars(el){
+  const flex=BUDGET.filter(b=>!['Mortgage','Insurance','Utilities'].includes(b[0]));
+  const left=sum(flex.map(b=>Math.max(b[1]-b[2],0)));
+  el.innerHTML=`<div class="grid">
+   <div class="card" style="display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:center">
+     <div><div class="eyebrow">Safe to spend this week</div><div style="font-family:var(--display);font-size:44px;font-weight:700" class="num">${fmt(Math.round(left/1.1/10)*10)}</div>
+     <div class="muted" style="font-size:14px">Bills for the rest of the month are already set aside.</div></div>
+     <div style="display:grid;gap:4px;font-size:14px;text-align:right"><span>Mortgage, insurance, utilities <span class="pill p-done">Paid</span></span><span>Next money in: <b>Oct 30</b>, your paycheck</span><span>Studio owner’s pay: <b>Nov 1</b>, $6,000</span></div>
+   </div>
+   <div class="card"><h3 style="margin-bottom:14px">What’s left in each jar</h3>
+    <div class="jars">${flex.map(([n,p,s])=>{const r=Math.max(p-s,0),f=r/p;return `<div class="jar ${f===0?'empty':f<.25?'low':''}"><div class="glass"><i style="height:${Math.max(f*100,2)}%"></i></div><b class="num">${fmt(r)}</b><span>${n}</span><span class="muted">${s>p?`over by ${fmt(s-p)}`:`of ${fmt(p)}`}</span></div>`}).join('')}</div></div>
+   <div class="card"><h3 style="margin-bottom:12px">Savings jars</h3>
+    <div class="jars">${GOALS.map(([n,g,h])=>`<div class="jar"><div class="glass"><i style="height:${h/g*100}%;background:var(--rose-soft);border-top-color:var(--rose)"></i></div><b class="num">${fmt(h)}</b><span>${n}</span><span class="muted">goal ${fmt(g)}</span></div>`).join('')}</div></div>
+  </div>`;
+}
+
+/* ===== Home C: calendar ===== */
+function homeCal(el){
+  const ev={1:[['in','Owner’s pay $6,000'],['out','Mortgage $2,400']],5:[['out','Car ins. $140']],10:[['out','Electric $180']],12:[['out','Water $64']],15:[['in','Paycheck $3,700'],['out','Health ins. $140']],18:[['out','Phones $95']],22:[['out','Amex due $1,640']],25:[['out','Chase due $910']],28:[['out','Internet $70']],30:[['in','Paycheck $3,700']]};
+  const startDow=4; // Oct 1 2026 is a Thursday
+  let bal=600, series=[];
+  const daily=[0,45,60,30,80,120,25,40,55,150,60,35,90,40,30,70,110,50,45,60,140,35,55,40,0,0,0,0,0,0,0];
+  for(let d=1;d<=31;d++){(ev[d]||[]).forEach(([t,s])=>{const v=+s.replace(/[^0-9]/g,'');bal+=t==='in'?v:-v;});bal-=daily[d-1];series.push(bal);}
+  const actual=series.map((v,i)=>i<24?v:null), ahead=series.map((v,i)=>i>=23?v:null);
+  const low=Math.min(...series), lowDay=series.indexOf(low)+1;
+  let cells=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div class="dow">${d}</div>`).join('');
+  for(let i=0;i<startDow;i++) cells+='<div class="day blank"></div>';
+  for(let d=1;d<=31;d++) cells+=`<div class="day ${d===24?'today':''}"><span class="n">${d}</span>${(ev[d]||[]).map(([t,s])=>`<span class="ev ${t}" title="${s}">${s}</span>`).join('')}</div>`;
+  el.innerHTML=`<div class="grid">
+   <div class="card"><div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;margin-bottom:10px"><h3>October 2026</h3><div class="legend"><span><i style="background:var(--good)"></i>Money in</span><span><i style="background:var(--rose)"></i>Bills</span></div></div>
+    <div class="cal">${cells}</div></div>
+   <div class="card"><div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;margin-bottom:6px"><h3>Checking balance across the month</h3><div class="legend"><span><i style="background:var(--accent)"></i>So far</span><span><i style="background:var(--muted)"></i>Expected</span></div></div>
+    ${lines(Array.from({length:31},(_,i)=>String(i+1)),[actual,ahead],['var(--accent)','var(--muted)'],{dash:[0,1],h:200})}
+    <p class="muted" style="font-size:14px">Tightest day: <b style="color:var(--ink)">Oct ${lowDay}</b>, at <b class="num" style="color:var(--ink)">${fmt(low)}</b>, the day before your paycheck lands. It stays above your $1,500 cushion all month.</p></div>
+  </div>`;
+}
+
+route();
+</script>
