@@ -44,16 +44,83 @@ def year(y: int) -> dict:
     plans = [plan_for(f"{y}-{m:02d}") for m in range(1, 13)]
     lines = []
     for c in cats:
-        lines.append({
+        line = {
             "id": c["id"], "name": c["name"], "bucket": c["bucket"], "kind": c["kind"], "archived": c["archived"],
             "plan": [plans[m].get(c["id"], 0) for m in range(12)],
             "act": [act[c["id"]][m] if m <= last else None for m in range(12)],
-        })
+            "rollover_from": c["rollover_from"], "avail": None,
+        }
+        if c["rollover_from"]:
+            line["avail"] = _rollover(c, y, line["plan"], act[c["id"]], last)
+        lines.append(line)
     unsorted = db.rows(
         "SELECT CAST(substr(date,6,2) AS INTEGER) m, COUNT(*) n, SUM(status='needs_you') ask, SUM(status='suggested') sug "
         "FROM transactions t WHERE is_split=0 AND hidden=0 AND status IN ('needs_you','suggested') AND substr(date,1,4)=? GROUP BY m",
         (str(y),))
     return {"year": y, "last": last, "lines": lines, "open": {r["m"] - 1: {"ask": r["ask"], "sug": r["sug"]} for r in unsorted}}
+
+
+def _rollover(c: dict, y: int, plan: list[int], act: list[int], last: int) -> list:
+    """What's available each month for a rollover category: this month's plan plus everything
+    planned-but-unspent (or minus anything overspent) since the month rollover was turned on."""
+    sy, sm = (int(x) for x in c["rollover_from"].split("-"))
+    carry = 0
+    if sy < y:                           # balance brought in from earlier years
+        spent = db.one(
+            f"SELECT COALESCE({actual_expr()},0) v FROM transactions t JOIN categories c ON c.id=t.category_id "
+            f"WHERE {LIVE} AND t.category_id=? AND t.date>=? AND t.date<?", (c["id"], f"{sy}-{sm:02d}-01", f"{y}-01-01"))["v"]
+        yy, mm, planned = sy, sm, 0
+        while yy < y:
+            planned += plan_for(f"{yy}-{mm:02d}").get(c["id"], 0)
+            yy, mm = (yy + 1, 1) if mm == 12 else (yy, mm + 1)
+        carry = planned - spent
+    out = []
+    for m in range(12):
+        if (y, m + 1) < (sy, sm):
+            out.append(None)
+            continue
+        out.append(carry + plan[m])
+        carry += plan[m] - (act[m] if m <= last else 0)   # months still ahead: assume the plan, nothing spent yet
+    return out
+
+
+def report(start: str, end: str, kind: str = "spending", group: str = "category") -> dict:
+    """Totals between two dates, grouped by category / merchant / account / bucket / tag, with a month-by-month breakdown."""
+    buckets = {"spending": ("ess", "non"), "income": ("income",), "goals": ("goal",)}.get(kind, ("ess", "non"))
+    col = {"category": ("c.id", "c.name"), "merchant": ("t.mkey", "MAX(t.merchant)"), "account": ("a.id", "a.name"),
+           "bucket": ("c.bucket", "c.bucket")}.get(group, ("c.id", "c.name"))
+    marks = ",".join("?" * len(buckets))
+    base = (f"FROM transactions t JOIN categories c ON c.id=t.category_id JOIN accounts a ON a.id=t.account_id "
+            f"WHERE {LIVE} AND c.bucket IN ({marks}) AND t.date>=? AND t.date<=?")
+    args = (*buckets, start, end)
+    groups: dict = {}
+    if group == "tag":
+        for r in db.rows(f"SELECT t.tags, substr(t.date,1,7) ym, {actual_expr()} v, COUNT(*) n {base} GROUP BY t.tags, ym", args):
+            for tag in [x.strip() for x in r["tags"].split(",") if x.strip()] or ["(no tag)"]:
+                g = groups.setdefault(tag, {"key": tag, "name": tag, "total": 0, "n": 0, "months": {}})
+                g["total"] += r["v"] or 0
+                g["n"] += r["n"]
+                g["months"][r["ym"]] = g["months"].get(r["ym"], 0) + (r["v"] or 0)
+    else:
+        for r in db.rows(f"SELECT {col[0]} k, {col[1]} name, substr(t.date,1,7) ym, {actual_expr()} v, COUNT(*) n {base} GROUP BY k, ym", args):
+            g = groups.setdefault(r["k"], {"key": r["k"], "name": r["name"], "total": 0, "n": 0, "months": {}})
+            g["name"] = r["name"]
+            g["total"] += r["v"] or 0
+            g["n"] += r["n"]
+            g["months"][r["ym"]] = r["v"] or 0
+    months = []
+    y, m = int(start[:4]), int(start[5:7])
+    while f"{y}-{m:02d}" <= end[:7]:
+        months.append(f"{y}-{m:02d}")
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+    if group == "bucket":
+        names = {b["key"]: b["name"] for b in db.BUCKETS}
+        for g in groups.values():
+            g["name"] = names.get(g["key"], g["key"])
+    out = sorted(groups.values(), key=lambda g: -g["total"])
+    biggest = db.rows(f"SELECT t.id, t.date, t.merchant, t.amount_cents, c.name category {base} "
+                      f"ORDER BY abs(t.amount_cents) DESC LIMIT 10", args)
+    return {"months": months, "groups": out, "total": sum(g["total"] for g in out), "biggest": biggest}
 
 
 def month_end(y: int, m: int) -> str:

@@ -37,9 +37,14 @@ AFTER.snap = () => {
 VIEW.plan = async B => {
   const i = mi(), goals = await api('/goals');
   const inc = incT(B, 'plan', i), bk = B.buckets.map(b => [b.name, bT(b, 'plan', i)]), left = inc - sum(bk.map(x => x[1]));
-  const row = l => `<tr><td><button class="mname" style="font-weight:400" data-drill="${l.id}">${esc(l.name)}</button></td><td class="r"><input class="amt num" data-plan="${l.id}" value="${l.plan[i] / 100}" inputmode="decimal" aria-label="Monthly target for ${esc(l.name)}"></td><td class="r num muted">${l.act[i] == null ? '—' : fmt(l.act[i])}</td></tr>`;
+  const leftOf = l => { const on = l.avail && l.avail[i] != null, have = on ? l.avail[i] : l.plan[i], v = have - (l.act[i] || 0); return { on, have, v }; };
+  const row = l => { const x = leftOf(l), inc = l.bucket === 'income';
+    return `<tr><td><button class="mname" style="font-weight:400" data-drill="${l.id}">${esc(l.name)}</button>${x.on ? `<div class="note">${fmt(x.have)} available with rollover</div>` : ''}</td>
+    <td class="r"><input class="amt num" data-plan="${l.id}" value="${l.plan[i] / 100}" inputmode="decimal" aria-label="Monthly target for ${esc(l.name)}"></td><td class="r num muted">${l.act[i] == null ? '—' : fmt(l.act[i])}</td>
+    ${inc ? '' : `<td class="r num ${l.act[i] == null || x.v === 0 ? '' : (l.bucket === 'goal' ? x.v <= 0 : x.v >= 0) ? 'pos' : 'neg'}">${l.act[i] == null ? '—' : fmt(x.v)}</td>
+    <td><button class="btn sm ${l.rollover_from ? 'on' : ''}" data-roll="${l.id}" data-on="${l.rollover_from ? 1 : 0}" title="${l.rollover_from ? 'Rollover is on since ' + esc(l.rollover_from) + '. Click to turn off.' : 'Carry unspent money forward to later months'}" aria-label="Rollover for ${esc(l.name)}" aria-pressed="${!!l.rollover_from}">↻</button></td>`}</tr>`; };
   return `<div class="grid">
-   <p class="note">Plan for <b>${monthName()}</b>. Changing a number here also sets it for the months after, until you change one of those.</p>
+   <p class="note">Plan for <b>${monthName()}</b>. Changing a number here also sets it for the months after, until you change one of those. Press ↻ on a category to carry what you don’t spend into the next month (and take overspending out of it).</p>
    <div class="grid g2">
     ${panel(`Income · ${MF[i]} plan`, `<div class="scroll"><table><thead><tr><th>Income type</th><th class="r">Monthly amount</th><th class="r">Actual</th></tr></thead><tbody>
       ${B.income.map(row).join('')}
@@ -49,9 +54,9 @@ VIEW.plan = async B => {
       <div class="zero" style="margin-top:12px;${left < 0 ? 'border-color:var(--bad);background:var(--bad-bg);color:var(--bad)' : left > 0 ? 'border-color:var(--warn);background:var(--warn-bg);color:var(--warn)' : ''}"><span>${left < 0 ? 'Over-assigned' : 'Left to assign'}: ${fmt(Math.abs(left))}</span>${left === 0 ? '<span style="font-weight:600">✓ Every dollar has a job</span>' : ''}</div>`)}
    </div>
    <div class="grid g3">
-    ${B.buckets.map((b, bi) => panel(`${bi + 1}. ${esc(b.name)}`, `<div class="bar-s">${esc(b.hint)}</div><div class="scroll"><table><thead><tr><th>Category</th><th class="r">Monthly target</th><th class="r">Actual</th></tr></thead><tbody>
+    ${B.buckets.map((b, bi) => panel(`${bi + 1}. ${esc(b.name)}`, `<div class="bar-s">${esc(b.hint)}</div><div class="scroll"><table><thead><tr><th>Category</th><th class="r">Monthly target</th><th class="r">Actual</th><th class="r">Left</th><th></th></tr></thead><tbody>
        ${b.lines.map(row).join('')}
-       <tr class="tot"><td>Total</td><td class="r num">${fmt(bT(b, 'plan', i))}</td><td class="r num">${B.last >= i ? fmt(bT(b, 'act', i)) : '—'}</td></tr></tbody></table></div>
+       <tr class="tot"><td>Total</td><td class="r num">${fmt(bT(b, 'plan', i))}</td><td class="r num">${B.last >= i ? fmt(bT(b, 'act', i)) : '—'}</td><td class="r num">${B.last >= i ? fmt(sum(b.lines.map(l => leftOf(l).v))) : '—'}</td><td></td></tr></tbody></table></div>
        <div class="pad" style="padding:8px"><button class="btn sm" data-addcat="${b.key}">Add a category</button></div>`, false)).join('')}
    </div>
    ${panel('Savings goals', `${goals.length ? `<div class="scroll"><table><thead><tr><th>Goal</th><th class="r">Target</th><th class="r">So far</th><th class="r">Remaining</th><th class="r">Per month</th><th>Ready</th><th style="width:22%">Progress</th><th></th></tr></thead><tbody>
@@ -72,6 +77,7 @@ AFTER.plan = () => {
   $$('[data-plan]').forEach(x => x.onchange = async () => { try { await put('/budget/' + state.month, { [x.dataset.plan]: cents(x.value) }); await refresh(); } catch (e) { fail(e); } });
   $$('[data-addcat]').forEach(b => b.onclick = () => newCategory());
   $$('[data-drill]').forEach(b => b.onclick = () => drill(+b.dataset.drill));
+  $$('[data-roll]').forEach(b => b.onclick = async () => { try { await patch('/categories/' + b.dataset.roll, { rollover_from: +b.dataset.on ? null : state.month }); await refresh(); toast(+b.dataset.on ? 'Rollover turned off.' : `Rollover on from ${monthName()}. Unspent money carries forward.`); } catch (e) { fail(e); } });
   $$('[data-gsaved]').forEach(x => x.onchange = async () => { try { await patch('/goals/' + x.dataset.gsaved, { saved_cents: cents(x.value) }); render(); } catch (e) { fail(e); } });
   $$('[data-gmonthly]').forEach(x => x.onchange = async () => { try { await patch('/goals/' + x.dataset.gmonthly, { monthly_cents: cents(x.value) }); render(); } catch (e) { fail(e); } });
   $$('[data-gdel]').forEach(b => b.onclick = async () => { if (!confirm('Remove this goal?')) return; try { await del('/goals/' + b.dataset.gdel); render(); } catch (e) { fail(e); } });
@@ -209,6 +215,58 @@ VIEW.dash = async B => {
     ${panel('Where it goes · top merchants, all time', merch.length ? hbar(merch.slice(0, 12).map(m => [m.merchant, m.spent]), 'var(--c2)') : '<p class="note">Nothing yet.</p>')}
    </div>
   </div>`;
+};
+
+/* ===== Reports: any date range, grouped your way ===== */
+const rep = { range: '6', kind: 'spending', group: 'category', start: '', end: '' };
+function repDates() {
+  const t = state.boot.today, [y, m] = t.split('-').map(Number), iso = (yy, mm, dd) => `${yy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+  const back = n => { let yy = y, mm = m - n; while (mm < 1) { mm += 12; yy--; } return iso(yy, mm, 1); };
+  if (rep.range === 'custom' && rep.start && rep.end) return [rep.start, rep.end];
+  if (rep.range === 'ytd') return [iso(y, 1, 1), t];
+  if (rep.range === 'last') return [iso(y - 1, 1, 1), iso(y - 1, 12, 31)];
+  if (rep.range === 'month') { const [sy, sm] = ym(); return [iso(sy, sm, 1), iso(sy, sm, new Date(sy, sm, 0).getDate())]; }
+  return [back(+rep.range - 1), t];
+}
+VIEW.rep = async () => {
+  const [start, end] = repDates(); rep.start = start; rep.end = end;
+  const r = await api(`/report?start=${start}&end=${end}&kind=${rep.kind}&group=${rep.group}`);
+  const lab = r.months.map(x => M[+x.slice(5) - 1] + (r.months.length > 12 ? ' ’' + x.slice(2, 4) : ''));
+  const perMonth = r.months.map(mo => sum(r.groups.map(g => g.months[mo] || 0)));
+  const top = r.groups.slice(0, 6), noun = { spending: 'Spending', income: 'Income', goals: 'Goal contributions' }[rep.kind];
+  const opt = (v, n, cur) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${n}</option>`;
+  return `<div class="grid">
+   <div class="filters">
+     <select id="rp-range" aria-label="Date range">${[['month', monthName()], ['3', 'Last 3 months'], ['6', 'Last 6 months'], ['12', 'Last 12 months'], ['ytd', 'This year so far'], ['last', 'Last year'], ['custom', 'Custom dates']].map(([v, n]) => opt(v, n, rep.range)).join('')}</select>
+     <input class="in" type="date" id="rp-start" value="${start}" aria-label="From"><input class="in" type="date" id="rp-end" value="${end}" aria-label="To">
+     <select id="rp-kind" aria-label="What to show">${[['spending', 'Spending'], ['income', 'Income'], ['goals', 'Savings, investing & debt']].map(([v, n]) => opt(v, n, rep.kind)).join('')}</select>
+     <select id="rp-group" aria-label="Group by">${[['category', 'By category'], ['bucket', 'By bucket'], ['merchant', 'By merchant'], ['account', 'By account'], ['tag', 'By tag']].map(([v, n]) => opt(v, n, rep.group)).join('')}</select>
+   </div>
+   ${r.groups.length ? `<div class="grid g2">
+    ${panel(`${noun} by month`, `<div class="kpis"><div class="kpi"><div class="l">Total</div><div class="v num">${fmt(r.total)}</div></div><div class="kpi"><div class="l">Average month</div><div class="v num">${fmt(Math.round(r.total / r.months.length))}</div></div><div class="kpi"><div class="l">Highest month</div><div class="v num">${fmt(Math.max(...perMonth))}</div></div></div>
+      <div style="margin-top:12px">${bars(lab, [perMonth], ['var(--c2)'], 200)}</div>`)}
+    ${panel('Where it went', donutBlock([...top.map(g => [g.name, g.total]), ...(r.groups.length > 6 ? [['Everything else', sum(r.groups.slice(6).map(g => g.total))]] : [])], fmt(r.total)))}
+   </div>
+   ${r.months.length > 1 ? panel(`Trend · top ${Math.min(top.length, 5)}`, `<div class="legend" style="margin-bottom:6px">${top.slice(0, 5).map((g, i) => `<span><i style="background:${C[i]}"></i>${esc(g.name)}</span>`).join('')}</div>
+     ${line(lab, top.slice(0, 5).map(g => r.months.map(mo => g.months[mo] || 0)), C, { h: 220, dash: [1, 1, 1, 1, 1].map(() => 0), min: 0 }).replace(/<path d="[^"]*Z"[^>]*\/>/, '')}`) : ''}
+   ${panel(`${noun} · ${esc(start)} to ${esc(end)}`, `<div class="scroll"><table class="ann"><thead><tr><th style="background:var(--navy);color:var(--navy-ink)">${{ category: 'Category', bucket: 'Bucket', merchant: 'Merchant', account: 'Account', tag: 'Tag' }[rep.group]}</th>${lab.map(x => `<th class="m sep">${x}</th>`).join('')}<th class="m sep">Total</th><th class="m">Avg</th><th class="m">Share</th><th class="m">Count</th></tr></thead><tbody>
+     ${r.groups.map(g => `<tr><td>${rep.group === 'category' ? `<button class="mname" style="font-weight:400" data-drill="${g.key}">${esc(g.name)}</button>` : rep.group === 'merchant' ? `<button class="mname" style="font-weight:400" data-merch="${esc(g.name)}">${esc(g.name)}</button>` : esc(g.name)}</td>${r.months.map(mo => `<td class="r num sep">${g.months[mo] ? fmt(g.months[mo]) : '<span class="muted">—</span>'}</td>`).join('')}
+       <td class="r num sep"><b>${fmt(g.total)}</b></td><td class="r num">${fmt(Math.round(g.total / r.months.length))}</td><td class="r num">${pct(g.total, r.total)}</td><td class="r num">${g.n}</td></tr>`).join('')}
+     <tr class="tot"><td>Total</td>${perMonth.map(v => `<td class="r num sep">${fmt(v)}</td>`).join('')}<td class="r num sep">${fmt(r.total)}</td><td class="r num">${fmt(Math.round(r.total / r.months.length))}</td><td class="r">100%</td><td class="r num">${sum(r.groups.map(g => g.n))}</td></tr>
+   </tbody></table></div>`, false)}
+   ${panel('Ten biggest in this range', `<table><tbody>${r.biggest.map(t => `<tr><td class="num" style="white-space:nowrap">${dshort(t.date)} ’${t.date.slice(2, 4)}</td><td><button class="mname" data-open="${t.id}">${esc(t.merchant)}</button></td><td class="muted">${esc(t.category)}</td><td class="r num">${fmt(Math.abs(t.amount_cents), 2)}</td></tr>`).join('')}</tbody></table>`, false)}`
+   : '<p class="empty">Nothing in this range.</p>'}
+  </div>`;
+};
+AFTER.rep = () => {
+  $('#rp-range').onchange = e => { rep.range = e.target.value; render(); };
+  $('#rp-start').onchange = e => { if (!e.target.value) return; rep.range = 'custom'; rep.start = e.target.value; if (rep.start > rep.end) rep.end = state.boot.today > rep.start ? state.boot.today : rep.start; render(); };
+  $('#rp-end').onchange = e => { if (!e.target.value) return; rep.range = 'custom'; rep.end = e.target.value; if (rep.end < rep.start) rep.start = rep.end.slice(0, 8) + '01'; render(); };
+  $('#rp-kind').onchange = e => { rep.kind = e.target.value; render(); };
+  $('#rp-group').onchange = e => { rep.group = e.target.value; render(); };
+  $$('[data-drill]').forEach(b => b.onclick = () => drill(+b.dataset.drill, true));
+  $$('[data-merch]').forEach(b => b.onclick = () => { state.f = { q: b.dataset.merch, status: '', account: 0, category: 0, all: true }; state.tab = 'tx'; render(); });
+  $$('[data-open]').forEach(b => b.onclick = () => txDetail(+b.dataset.open));
 };
 
 /* ===== 8. Recurring ===== */

@@ -355,3 +355,43 @@ def test_pairing_leaves_a_paycheck_your_history_sorted(api):
     add_tx("MORTGAGE AUTOPAY WELLS", -2400, "2026-10-01", other)
     reports.after_ingest()
     assert tx(pay)["category_id"] == cat("Paycheck")
+
+
+def test_rollover_carries_unspent_and_overspent(api):
+    c = cat("Travel")
+    api.put("/api/budget/2026-01", json={str(c): 30000})
+    api.patch(f"/api/categories/{c}", json={"rollover_from": "2026-02"})
+    for day, dollars in (("2026-02-10", -100), ("2026-03-05", -700)):
+        api.patch(f"/api/transactions/{add_tx('DELTA AIR 0062341', dollars, day)}", json={"category_id": c})
+    line = next(l for l in api.get("/api/year/2026").json()["lines"] if l["id"] == c)
+    # Jan: before rollover. Feb: 300. Mar: 300 + 200 unspent. Apr: 300 + (500 - 700) overspent.
+    assert line["avail"][:4] == [None, 30000, 50000, 10000]
+    nxt = next(l for l in api.get("/api/year/2027").json()["lines"] if l["id"] == c)
+    assert nxt["avail"][0] == 30000 + (30000 * 11 - 80000)
+    api.patch(f"/api/categories/{c}", json={"rollover_from": None})
+    assert next(l for l in api.get("/api/year/2026").json()["lines"] if l["id"] == c)["avail"] is None
+
+
+def test_report_groups_and_ranges(api):
+    for raw, dollars, day, name in (("TRADER JOE'S #1", -100, "2026-08-03", "Groceries"), ("TRADER JOE'S #1", -50, "2026-09-03", "Groceries"),
+                                    ("CHIPOTLE 22", -30, "2026-09-09", "Eating out"), ("PAYROLL ACME", 3000, "2026-09-01", "Paycheck"),
+                                    ("CHIPOTLE 22", -999, "2026-11-01", "Eating out")):
+        api.patch(f"/api/transactions/{add_tx(raw, dollars, day)}", json={"category_id": cat(name)})
+    r = api.get("/api/report?start=2026-08-01&end=2026-09-30").json()
+    assert r["months"] == ["2026-08", "2026-09"] and r["total"] == 18000
+    assert [(g["name"], g["total"]) for g in r["groups"]] == [("Groceries", 15000), ("Eating out", 3000)]
+    assert r["groups"][0]["months"] == {"2026-08": 10000, "2026-09": 5000}
+    m = api.get("/api/report?start=2026-08-01&end=2026-09-30&group=merchant").json()
+    assert m["groups"][0]["key"] == "TRADER JOE'S"
+    assert api.get("/api/report?start=2026-08-01&end=2026-09-30&kind=income").json()["total"] == 300000
+    assert api.get("/api/report?start=2026-09-30&end=2026-08-01").status_code == 400
+
+
+def test_backup_is_a_readable_copy(tmp_path, monkeypatch):
+    import sqlite3
+    monkeypatch.setenv("MONEY_DB", str(tmp_path / "money.db"))
+    db.reset()
+    add_tx("NETFLIX.COM", -22.99)
+    target = db.backup()
+    assert sqlite3.connect(target).execute("SELECT COUNT(*) FROM transactions").fetchone()[0] == 1
+    db.reset(":memory:")

@@ -16,12 +16,13 @@ Open http://localhost:8000. It starts with a made-up household. The current mont
 | Tab | What it does |
 | --- | --- |
 | Financial Snapshot | Every account by group, bills at a glance by month, what's due in the next 30 days |
-| Categories & Goals | Zero-based monthly plan ("every dollar has a job"), editable in place, savings goals with a ready date |
+| Categories & Goals | Zero-based monthly plan ("every dollar has a job"), editable in place, optional rollover per category (↻), savings goals with a ready date |
 | Income & Expense Log | Every transaction. Search, filter, change category, split, notes, tags, hide, rename. On a phone it turns into cards, plus a one-at-a-time review |
 | Annual Spending Plan | Plan / actual / difference for all 12 months |
 | Month in Review | KPIs, planned vs. actual, spending summary, reflection notes (saved), one-tap plan adjustments |
 | Net Worth | Month-by-month tracker for every account, plus investment holdings |
 | Dashboard Summary | Year to date, income vs. spending, cash flow, top categories and merchants |
+| Reports | Any date range, spending / income / goals, grouped by category, bucket, merchant, account or tag, with a month-by-month table and trend |
 | Recurring | Bills and subscriptions found by their rhythm, with price-change flags and yearly cost |
 | What I've Learned | Every merchant it knows, where it sends it and why; fix or forget any of them; rules |
 | Settings | Bank connections (Plaid), CSV import/export, accounts, categories |
@@ -58,7 +59,7 @@ The data is one SQLite file (`MONEY_DB`), so it needs a machine with a disk that
 - **A computer at home that's always on**, reached through Tailscale. Simplest and free.
 - **A small cloud VM** (Google's free e2-micro works): `docker build -t money . && docker run -d --restart=always -p 8000:8000 -v money-data:/data --env-file .env money`, with Caddy in front for https.
 
-Before it's reachable from the internet: set `APP_USERS` and a long `SECRET_KEY`, and serve it over https only. Back up the `.db` file; it's the whole thing.
+Before it's reachable from the internet: set `APP_USERS` and a long `SECRET_KEY`, and serve it over https only. The `.db` file is the whole thing. While the app runs it copies it into `backups/` beside the database once a day and keeps the newest 14; copy that folder somewhere else now and then.
 
 ## Tests
 

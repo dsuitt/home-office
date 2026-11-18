@@ -399,6 +399,8 @@ def edit_category(cid: int, body: dict = Body(...)):
         for f in ("archived", "sort"):
             if f in body:
                 con.execute(f"UPDATE categories SET {f}=? WHERE id=?", (int(body[f]), cid))
+        if "rollover_from" in body:      # a month (YYYY-MM) turns rollover on from then; null turns it off
+            con.execute("UPDATE categories SET rollover_from=? WHERE id=?", (body["rollover_from"] or None, cid))
         if body.get("merge_into"):       # move everything to another category, then remove this one
             into = int(body["merge_into"])
             con.execute("UPDATE transactions SET category_id=? WHERE category_id=?", (into, cid))
@@ -411,6 +413,13 @@ def edit_category(cid: int, body: dict = Body(...)):
 @app.get("/api/year/{y}")
 def year(y: int):
     return reports.year(y)
+
+
+@app.get("/api/report")
+def report(start: str, end: str, kind: str = "spending", group: str = "category"):
+    if len(start) != 10 or len(end) != 10 or start > end:
+        raise HTTPException(400, "Pick a start date on or before the end date")
+    return reports.report(start, end, kind, group)
 
 
 @app.put("/api/budget/{month}")
@@ -628,9 +637,13 @@ def healthz():
 
 
 def _auto_sync():
-    """Pull from the banks every few hours while the app is running, so nobody has to press Sync."""
+    """Every few hours while the app runs: back up the database, then pull from the banks."""
     hours = float(os.environ.get("SYNC_EVERY_HOURS", "6"))
     while hours > 0:
+        try:
+            db.backup()
+        except Exception as e:
+            print("backup failed:", e)
         time.sleep(hours * 3600)
         try:
             if plaid.configured():
@@ -646,7 +659,7 @@ def startup():
         ingest.seed_demo()
     if users() and len(os.environ.get("SECRET_KEY", "")) < 16:
         raise RuntimeError("Set SECRET_KEY to a long random string before turning sign-in on.")
-    if plaid.configured():
+    if db.db_path() != ":memory:":
         import threading
         threading.Thread(target=_auto_sync, daemon=True).start()
 

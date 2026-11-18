@@ -49,7 +49,8 @@ CREATE TABLE IF NOT EXISTS categories (
   bucket TEXT NOT NULL,                -- income | ess | non | goal | transfer
   kind TEXT NOT NULL DEFAULT 'expense',-- income | expense | save | invest | debt | transfer
   sort INTEGER NOT NULL DEFAULT 0,
-  archived INTEGER NOT NULL DEFAULT 0
+  archived INTEGER NOT NULL DEFAULT 0,
+  rollover_from TEXT                   -- YYYY-MM: unspent plan carries forward from this month
 );
 
 CREATE TABLE IF NOT EXISTS transactions (
@@ -182,6 +183,13 @@ def connect(path: str | None = None) -> sqlite3.Connection:
     con.execute("PRAGMA foreign_keys=ON")
     con.execute("PRAGMA journal_mode=WAL")
     con.executescript(SCHEMA)
+    # Columns added after the first version: bring an existing database file up to date.
+    for table, col, ddl in (
+        ("goals", "as_of", "TEXT NOT NULL DEFAULT '2000-01-01'"),
+        ("categories", "rollover_from", "TEXT"),    # YYYY-MM: unspent plan carries forward from this month
+    ):
+        if col not in {r["name"] for r in con.execute(f"PRAGMA table_info({table})")}:
+            con.execute(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}")
     if not con.execute("SELECT 1 FROM categories LIMIT 1").fetchone():
         con.executemany(
             "INSERT INTO categories(name,bucket,kind,sort) VALUES(?,?,?,?)",
@@ -222,6 +230,26 @@ def tx():
         except Exception:
             con.rollback()
             raise
+
+
+def backup(keep: int = 14) -> str | None:
+    """Copy the database into a dated file next to it (one per day, newest `keep` kept)."""
+    path = db_path()
+    if path == ":memory:":
+        return None
+    from datetime import date
+    folder = Path(path).parent / "backups"
+    folder.mkdir(parents=True, exist_ok=True)
+    target = folder / f"money-{date.today().isoformat()}.db"
+    with _lock:
+        dest = sqlite3.connect(target)
+        try:
+            get().backup(dest)
+        finally:
+            dest.close()
+    for old in sorted(folder.glob("money-*.db"))[:-keep]:
+        old.unlink()
+    return str(target)
 
 
 def rows(sql: str, args: tuple | list = ()) -> list[dict]:

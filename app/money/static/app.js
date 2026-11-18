@@ -81,7 +81,7 @@ const panel = (title, body, pad = true) => `<section class="panel"><div class="b
 
 /* ---------- state ---------- */
 const TABS = [['snap', 'Financial Snapshot'], ['plan', 'Categories & Goals'], ['tx', 'Income & Expense Log'], ['annual', 'Annual Spending Plan'], ['review', 'Month in Review'],
-  ['nw', 'Net Worth'], ['dash', 'Dashboard Summary'], ['rec', 'Recurring'], ['learn', 'What I’ve Learned'], ['set', 'Settings']];
+  ['nw', 'Net Worth'], ['dash', 'Dashboard Summary'], ['rep', 'Reports'], ['rec', 'Recurring'], ['learn', 'What I’ve Learned'], ['set', 'Settings']];
 const state = { tab: 'snap', month: null, boot: null, year: null, f: { q: '', status: '', account: 0, category: 0, all: false } };
 try { const s = JSON.parse(localStorage.getItem('money-ui') || 'null'); if (s && TABS.some(t => t[0] === s.tab)) state.tab = s.tab; } catch (e) { }
 const VIEW = {}, AFTER = {};
