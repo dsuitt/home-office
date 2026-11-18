@@ -186,6 +186,32 @@ VIEW.nw = async () => {
   </div>`;
 };
 
+/* Cash-flow diagram: income sources -> total income -> buckets (+ left over) -> categories. */
+function sankey(B, n) {
+  const ytd = l => sum(l.act.slice(0, n)), W = 900, H = 420, PAD = 8, NW = 12, X = [0, 300, 600, W - NW].map(x => x + 0);
+  const inc = B.income.map(l => ({ name: l.name, v: ytd(l) })).filter(x => x.v > 0), total = sum(inc.map(x => x.v));
+  if (total <= 0) return '<p class="note">No income recorded yet for this year.</p>';
+  const col = ['var(--c1)', 'var(--c2)', 'var(--c5)', 'var(--muted)'];
+  const bk = B.buckets.map((b, i) => { const lines = b.lines.map(l => ({ name: l.name, v: ytd(l) })).filter(x => x.v > 0).sort((a, c) => c.v - a.v); const top = lines.slice(0, 5), rest = sum(lines.slice(5).map(x => x.v)); if (rest > 0) top.push({ name: 'Other ' + b.name.toLowerCase(), v: rest }); return { name: b.name, v: sum(lines.map(x => x.v)), kids: top, color: col[i] }; }).filter(b => b.v > 0);
+  const out = sum(bk.map(b => b.v)), left = total - out;
+  if (left > 0) bk.push({ name: 'Left over', v: left, kids: [], color: col[3] });
+  const scaleBase = Math.max(total, out), leaves = sum(bk.map(b => Math.max(b.kids.length, 1)));
+  const MIN = 15, flat = bk.flatMap(b => b.kids.length ? b.kids : [b]);          // thin slices still get a full line for their label
+  const s0 = (H - PAD * (leaves - 1)) / scaleBase, s = (H - PAD * (leaves - 1) - sum(flat.map(x => Math.max(MIN - x.v * s0, 0)))) / scaleBase;
+  const stack = (items, gap, min = 0) => { const slot = x => Math.max(x.v * s, min, 1), h = sum(items.map(slot)) + gap * (items.length - 1); let y = (H - h) / 2; return items.map(x => { const hh = Math.max(x.v * s, 1), o = { ...x, y: y + (slot(x) - hh) / 2, h: hh }; y += slot(x) + gap; return o; }); };
+  const A = stack(inc, PAD * 2), mid = stack([{ name: 'Income', v: total }], 0)[0], Bk = stack(bk, PAD * 2);
+  const kids = stack(bk.flatMap(b => b.kids.length ? b.kids.map(k => ({ ...k, color: b.color, parent: b.name })) : [{ name: '', v: b.v, color: b.color, parent: b.name, ghost: true }]), PAD, MIN);
+  const band = (x0, y0, x1, y1, h, color, tip) => { const mx = (x0 + x1) / 2; return `<path d="M${x0} ${y0} C${mx} ${y0} ${mx} ${y1} ${x1} ${y1} L${x1} ${y1 + h} C${mx} ${y1 + h} ${mx} ${y0 + h} ${x0} ${y0 + h} Z" fill="${color}" opacity=".28"><title>${esc(tip)}</title></path>`; };
+  const node = (x, o, color, anchor, label = true) => `<rect x="${x}" y="${o.y}" width="${NW}" height="${o.h}" fill="${color}" rx="2"/>` + (label && o.name ? `<text x="${anchor === 'end' ? x - 6 : x + NW + 6}" y="${o.y + o.h / 2 - 1}" text-anchor="${anchor}" dominant-baseline="middle" style="font-size:12px;fill:var(--ink)">${esc(o.name)} <tspan style="fill:var(--muted)">${fmt(o.v)} · ${pct(o.v, total)}</tspan></text>` : '');
+  let g = '', ym = mid.y;
+  A.forEach(a => { g += band(X[0] + NW, a.y, X[1], ym, a.h, col[1], `${a.name}: ${fmt(a.v)}`); ym += a.h; });
+  let yo = mid.y;
+  Bk.forEach(b => { const h = b.v * s; g += band(X[1] + NW, yo, X[2], b.y, h, b.color, `${b.name}: ${fmt(b.v)}`); yo += h; let yb = b.y; kids.filter(k => k.parent === b.name && !k.ghost).forEach(k => { g += band(X[2] + NW, yb, X[3], k.y, k.h, b.color, `${k.name}: ${fmt(k.v)}`); yb += k.h; }); });
+  g += A.map(a => node(X[0], a, col[1], 'start')).join('') + node(X[1], mid, col[0], 'start') + Bk.map(b => node(X[2], b, b.color, 'end')).join('') + kids.filter(k => !k.ghost).map(k => node(X[3], k, k.color, 'end')).join('');
+  const every = [...A, mid, ...Bk, ...kids], lo = Math.min(...every.map(o => o.y)), hi = Math.max(...every.map(o => o.y + o.h));
+  return `<div class="scroll"><svg viewBox="-4 ${lo - 12} ${W + 8} ${hi - lo + 24}" width="100%" style="min-width:680px;max-height:none" role="img" aria-label="Cash flow diagram: where income went">${g}</svg></div>`;
+}
+
 /* ===== 7. Dashboard Summary ===== */
 VIEW.dash = async B => {
   const n = B.last + 1, [E, N, G] = B.buckets, mos = M.slice(0, n), merch = await api('/merchants');
@@ -206,6 +232,7 @@ VIEW.dash = async B => {
       <div class="bar-s" style="margin:12px -14px 0">Top 3 · ${esc(N.name)}</div><table><tbody>${top(N).map((l, i) => `<tr><td>${i + 1}. ${esc(l.name)}</td><td class="r num">${fmt(ytd(l.act))}</td></tr>`).join('')}</tbody></table>`)}
     ${panel(`${esc(G.name)} so far`, hbar(G.lines.map(l => [l.name, ytd(l.act)]), 'var(--c5)'))}
    </div>
+   ${panel(`Where the money flowed · ${ym()[0]} to date`, sankey(B, n))}
    ${panel('Planned vs. actual spending by month', `<div class="legend" style="margin-bottom:6px"><span><i style="background:var(--c3)"></i>Planned</span><span><i style="background:var(--c1)"></i>Actual</span></div>
      ${bars(mos, [mos.map((_, i) => bT(E, 'plan', i) + bT(N, 'plan', i)), spent], ['var(--c3)', 'var(--c1)'])}`)}
    <div class="grid g2">

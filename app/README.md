@@ -21,7 +21,7 @@ Open http://localhost:8000. It starts with a made-up household. The current mont
 | Annual Spending Plan | Plan / actual / difference for all 12 months |
 | Month in Review | KPIs, planned vs. actual, spending summary, reflection notes (saved), one-tap plan adjustments |
 | Net Worth | Month-by-month tracker for every account, plus investment holdings |
-| Dashboard Summary | Year to date, income vs. spending, cash flow, top categories and merchants |
+| Dashboard Summary | Year to date, income vs. spending, a cash-flow diagram (income → buckets → categories), top categories and merchants |
 | Reports | Any date range, spending / income / goals, grouped by category, bucket, merchant, account or tag, with a month-by-month table and trend |
 | Recurring | Bills and subscriptions found by their rhythm, with price-change flags and yearly cost |
 | What I've Learned | Every merchant it knows, where it sends it and why; fix or forget any of them; rules |
