@@ -6,6 +6,7 @@ Tools to run a wedding photography studio's money (and our household money) with
 
 | Path | What it is |
 | --- | --- |
+| `app/` | **The household money app** (working code). Start with `app/README.md` |
 | `docs/plan.md` | Build plan: decisions, phased roadmap, open questions |
 | `docs/backend-flow.md` | Backend pipeline, data model and API surface |
 | `docs/setup.md` | GCP and local setup checklist |
@@ -23,4 +24,5 @@ The mockups are self-contained HTML. Open one in a browser to click through it. 
 
 ## Status
 
-Planning. No application code yet. See `docs/plan.md` for the roadmap.
+- **Home app: built and working** in `app/` (`cd app && make demo` to click through it with made-up data). It uses Plaid directly for the household accounts, which replaces the "Monarch for home" row in `docs/plan.md`. Not yet tried against a real Plaid account.
+- **Studio book:** still at the planning stage. See `docs/plan.md`.

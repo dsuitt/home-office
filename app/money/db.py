@@ -116,7 +116,8 @@ CREATE TABLE IF NOT EXISTS goals (
   monthly_cents INTEGER NOT NULL DEFAULT 0,
   category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL, -- contributions sorted here count
   sort INTEGER NOT NULL DEFAULT 0,
-  done INTEGER NOT NULL DEFAULT 0
+  done INTEGER NOT NULL DEFAULT 0,
+  as_of TEXT NOT NULL DEFAULT (date('now'))  -- saved_cents was true on this day; later contributions add to it
 );
 
 -- Yearly / one-off bills typed in by hand ("Bills at a glance"). Monthly ones are detected.

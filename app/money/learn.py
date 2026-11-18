@@ -54,9 +54,16 @@ def merchant_key(raw: str) -> str:
 
 
 def pretty(key: str) -> str:
-    small = {"AND", "OF", "THE", "&"}
-    return " ".join(w.lower() if w in small and i else (w if len(w) <= 3 and w.isalpha() and w not in small else w.capitalize())
-                    for i, w in enumerate(key.split()))
+    small = {"AND", "OF", "THE", "TO", "FROM", "FOR"}
+
+    def word(i: int, w: str) -> str:
+        if w in small and i:
+            return w.lower()
+        if len(w) <= 4 and w.isalpha() and not set(w) & set("AEIOUY"):
+            return w                     # CVS, BP, HSBC stay as they are
+        return "'".join(p.capitalize() if j == 0 else p.lower() for j, p in enumerate(w.split("'")))
+
+    return " ".join(word(i, w) for i, w in enumerate(key.split()))
 
 
 @dataclass

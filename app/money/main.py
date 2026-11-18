@@ -9,13 +9,21 @@ import time
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from fastapi import Body, Depends, FastAPI, HTTPException, Request, Response, UploadFile
+from fastapi import Body, FastAPI, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import db, ingest, learn, plaid, reports
 
 STATIC = Path(__file__).parent / "static"
+
+# Read app/.env if present (KEY=value lines), without overriding anything already set.
+_env = Path(__file__).resolve().parent.parent / ".env"
+if _env.exists():
+    for _line in _env.read_text().splitlines():
+        if "=" in _line and not _line.lstrip().startswith("#"):
+            _k, _v = _line.split("=", 1)
+            os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
 app = FastAPI(title="Home Money", docs_url=None, redoc_url=None, openapi_url=None)
 
 # ------------------------------------------------------------------ sign-in
@@ -71,6 +79,11 @@ async def guard(request: Request, call_next):
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["Referrer-Policy"] = "no-referrer"
     resp.headers["X-Frame-Options"] = "DENY"
+    # Bank descriptions are outside text: scripts may only come from this app and Plaid's Link.
+    resp.headers["Content-Security-Policy"] = (
+        "default-src 'self'; script-src 'self' https://cdn.plaid.com; frame-src https://cdn.plaid.com; "
+        "connect-src 'self' https://*.plaid.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src https://fonts.gstatic.com; img-src 'self' data:; base-uri 'none'; form-action 'self'")
     if path.startswith("/api/"):
         resp.headers["Cache-Control"] = "no-store"
     return resp
@@ -409,6 +422,11 @@ def set_budget(month: str, body: dict = Body(...)):
 @app.get("/api/goals")
 def goals():
     out = db.rows("SELECT g.*, c.name category FROM goals g LEFT JOIN categories c ON c.id=g.category_id ORDER BY g.done, g.sort, g.id")
+    for g in out:
+        # money sorted into the goal's category since the last time the saved amount was typed in
+        since = db.one("SELECT COALESCE(SUM(-amount_cents),0) s FROM transactions WHERE category_id=? AND amount_cents<0 AND date>? "
+                       "AND is_split=0 AND hidden=0", (g["category_id"], g["as_of"]))["s"] if g["category_id"] else 0
+        g["so_far_cents"] = g["saved_cents"] + since
     return out
 
 
@@ -429,6 +447,8 @@ def edit_goal(gid: int, body: dict = Body(...)):
         for f in ("target_cents", "saved_cents", "monthly_cents", "sort", "done", "category_id"):
             if f in body:
                 con.execute(f"UPDATE goals SET {f}=? WHERE id=?", (body[f] if body[f] is None else int(body[f]), gid))
+        if "saved_cents" in body:
+            con.execute("UPDATE goals SET as_of=date('now') WHERE id=?", (gid,))
     return {}
 
 
@@ -603,11 +623,28 @@ def healthz():
     return {"ok": True}
 
 
+def _auto_sync():
+    """Pull from the banks every few hours while the app is running, so nobody has to press Sync."""
+    hours = float(os.environ.get("SYNC_EVERY_HOURS", "6"))
+    while hours > 0:
+        time.sleep(hours * 3600)
+        try:
+            if plaid.configured():
+                plaid.sync_all()
+        except Exception as e:           # a bad night must not stop the next one
+            print("auto-sync failed:", e)
+
+
 @app.on_event("startup")
 def startup():
     db.get()
     if os.environ.get("DEMO") == "1":
         ingest.seed_demo()
+    if users() and len(os.environ.get("SECRET_KEY", "")) < 16:
+        raise RuntimeError("Set SECRET_KEY to a long random string before turning sign-in on.")
+    if plaid.configured():
+        import threading
+        threading.Thread(target=_auto_sync, daemon=True).start()
 
 
 @app.get("/")
