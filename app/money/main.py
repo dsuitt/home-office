@@ -53,6 +53,10 @@ def make_cookie(name: str) -> str:
 
 def who(request: Request) -> str:
     if not users():
+        # No sign-in configured: only this computer may use it, so a forgotten setting can't expose the data.
+        host = request.client.host if request.client else ""
+        if host not in ("127.0.0.1", "::1", "localhost") and os.environ.get("ALLOW_NO_AUTH") != "1":
+            raise HTTPException(401, "Set APP_USERS on the server to sign in from another device.")
         return "you"
     raw = request.cookies.get(COOKIE, "")
     try:
@@ -119,8 +123,8 @@ def logout(response: Response):
 def session(request: Request):
     try:
         return {"name": who(request), "auth": bool(users())}
-    except HTTPException:
-        return {"name": None, "auth": True}
+    except HTTPException as e:
+        return {"name": None, "auth": True, "setup": None if users() else e.detail}
 
 
 # ------------------------------------------------------------------ bootstrap

@@ -37,7 +37,7 @@ AFTER.snap = () => {
 VIEW.plan = async B => {
   const i = mi(), goals = await api('/goals');
   const inc = incT(B, 'plan', i), bk = B.buckets.map(b => [b.name, bT(b, 'plan', i)]), left = inc - sum(bk.map(x => x[1]));
-  const row = l => `<tr><td>${esc(l.name)}</td><td class="r"><input class="amt num" data-plan="${l.id}" value="${l.plan[i] / 100}" inputmode="decimal" aria-label="Monthly target for ${esc(l.name)}"></td><td class="r num muted">${l.act[i] == null ? '—' : fmt(l.act[i])}</td></tr>`;
+  const row = l => `<tr><td><button class="mname" style="font-weight:400" data-drill="${l.id}">${esc(l.name)}</button></td><td class="r"><input class="amt num" data-plan="${l.id}" value="${l.plan[i] / 100}" inputmode="decimal" aria-label="Monthly target for ${esc(l.name)}"></td><td class="r num muted">${l.act[i] == null ? '—' : fmt(l.act[i])}</td></tr>`;
   return `<div class="grid">
    <p class="note">Plan for <b>${monthName()}</b>. Changing a number here also sets it for the months after, until you change one of those.</p>
    <div class="grid g2">
@@ -71,6 +71,7 @@ VIEW.plan = async B => {
 AFTER.plan = () => {
   $$('[data-plan]').forEach(x => x.onchange = async () => { try { await put('/budget/' + state.month, { [x.dataset.plan]: cents(x.value) }); await refresh(); } catch (e) { fail(e); } });
   $$('[data-addcat]').forEach(b => b.onclick = () => newCategory());
+  $$('[data-drill]').forEach(b => b.onclick = () => drill(+b.dataset.drill));
   $$('[data-gsaved]').forEach(x => x.onchange = async () => { try { await patch('/goals/' + x.dataset.gsaved, { saved_cents: cents(x.value) }); render(); } catch (e) { fail(e); } });
   $$('[data-gmonthly]').forEach(x => x.onchange = async () => { try { await patch('/goals/' + x.dataset.gmonthly, { monthly_cents: cents(x.value) }); render(); } catch (e) { fail(e); } });
   $$('[data-gdel]').forEach(b => b.onclick = async () => { if (!confirm('Remove this goal?')) return; try { await del('/goals/' + b.dataset.gdel); render(); } catch (e) { fail(e); } });
@@ -81,10 +82,10 @@ AFTER.plan = () => {
 VIEW.annual = B => {
   const cell = (p, a, good) => { if (a == null) return `<td class="r num sep">${fmt(p)}</td><td class="r num muted">—</td><td class="r num muted">—</td>`; const d = a - p; const cls = Math.abs(d) < 100 ? '' : (good(d) ? 'pos' : 'neg'); return `<td class="r num sep">${fmt(p)}</td><td class="r num">${fmt(a)}</td><td class="r num ${cls}">${Math.abs(d) < 100 ? '$0' : (d > 0 ? '+' : '') + fmt(d)}</td>`; };
   const incGood = d => d >= 0, spendGood = d => d <= 0, goalGood = d => d >= 0;
-  const row = (name, p, a, good, cls = '') => `<tr class="${cls}"><td>${esc(name)}</td>${M.map((_, i) => cell(p[i], a[i], good)).join('')}</tr>`;
+  const row = (name, p, a, good, cls = '', id = 0) => `<tr class="${cls}"><td>${id ? `<button class="mname" style="font-weight:400" data-drill="${id}">${esc(name)}</button>` : esc(name)}</td>${M.map((_, i) => cell(p[i], a[i], good)).join('')}</tr>`;
   const sumL = (lines, w) => M.map((_, i) => w === 'act' && i > B.last ? null : sum(lines.map(l => l[w][i])));
-  let body = row('Total income', sumL(B.income, 'plan'), sumL(B.income, 'act'), incGood, 'tot') + B.income.map(l => row(l.name, l.plan, l.act, incGood)).join('');
-  B.buckets.forEach(b => { const g = b.key === 'goal' ? goalGood : spendGood; body += row(b.name, sumL(b.lines, 'plan'), sumL(b.lines, 'act'), g, 'tot') + b.lines.map(l => row(l.name, l.plan, l.act, g)).join(''); });
+  let body = row('Total income', sumL(B.income, 'plan'), sumL(B.income, 'act'), incGood, 'tot') + B.income.map(l => row(l.name, l.plan, l.act, incGood, '', l.id)).join('');
+  B.buckets.forEach(b => { const g = b.key === 'goal' ? goalGood : spendGood; body += row(b.name, sumL(b.lines, 'plan'), sumL(b.lines, 'act'), g, 'tot') + b.lines.map(l => row(l.name, l.plan, l.act, g, '', l.id)).join(''); });
   return `<div class="grid">
    <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center">
      <p class="note">Plan, actual and the difference for every month. Actuals fill in on their own as transactions are sorted. Scroll sideways for the full year.</p>
@@ -92,6 +93,8 @@ VIEW.annual = B => {
    ${panel(`Annual spending plan · ${ym()[0]}`, `<div class="scroll"><table class="ann"><thead><tr><th rowspan="2" style="background:var(--navy);color:var(--navy-ink)">Category</th>${M.map(m => `<th class="m sep" colspan="3">${m}</th>`).join('')}</tr><tr>${M.map(() => `<th class="r sep">Plan</th><th class="r">Actual</th><th class="r">+/−</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`, false)}
   </div>`;
 };
+
+AFTER.annual = () => $$('[data-drill]').forEach(b => b.onclick = () => drill(+b.dataset.drill, true));
 
 /* ===== 5. Month in Review ===== */
 VIEW.review = async B => {

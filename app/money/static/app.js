@@ -192,7 +192,7 @@ function txQuery() {
 function txRow(t) {
   const l = STATUS[t.status], income = t.amount_cents > 0;
   return `<tr class="${t.status === 'needs_you' ? 'ask' : ''} ${t.hidden ? 'hid' : ''}" data-id="${t.id}">
-    <td class="num" style="white-space:nowrap">${dshort(t.date)}${state.f.all ? ' ’' + t.date.slice(2, 4) : ''}</td>
+    <td class="num" style="white-space:nowrap"><input type="checkbox" data-pick="${t.id}" aria-label="Select ${esc(t.merchant)}" style="margin:0 6px 0 0;vertical-align:-2px">${dshort(t.date)}${state.f.all ? ' ’' + t.date.slice(2, 4) : ''}</td>
     <td class="muted" style="white-space:nowrap">${esc(t.account)}</td>
     <td><button class="mname" data-open="${t.id}">${esc(t.merchant)}</button>${t.pending ? ' <span class="pill p-auto">pending</span>' : ''}${t.parent_id ? ' <span class="pill p-auto">split</span>' : ''}${t.hidden ? ' <span class="pill p-auto">hidden</span>' : ''}
       <span class="raw" title="${esc(t.raw)}">${esc(t.raw)}</span></td>
@@ -221,6 +221,7 @@ VIEW.tx = async () => {
      ${sug ? `<button class="btn" id="ok-all">Confirm all ${sug} suggestions</button>` : ''}
      ${ask + sug ? `<button class="btn pri" id="cards">Review one at a time</button>` : ''}
      <button class="btn" id="add-tx">Add a transaction</button>
+     <span id="bulk" class="rowx" style="display:none"><b id="bulk-n"></b><select class="in" id="bulk-cat" aria-label="Category for selected">${catOptions(null, { blank: 'Set category…' })}</select><button class="btn" id="bulk-hide">Hide</button><button class="btn" id="bulk-tag">Tag…</button><button class="btn" id="bulk-none">Clear</button></span>
      <span class="note" style="margin-left:auto">${txCache.total} transactions · net ${fmt(txCache.sum_cents, 2)}</span>
    </div>
    ${panel(`Income & expense log · ${esc(scope)}`, rows.length ? `<div class="scroll"><table class="log"><thead><tr><th>Date</th><th>Account</th><th>Description</th><th class="r">Income</th><th class="r">Expense</th><th>Category</th><th>Bucket</th><th>Status</th><th>Notes</th></tr></thead>
@@ -241,7 +242,17 @@ AFTER.tx = () => {
   if ($('#ok-all')) $('#ok-all').onclick = async () => { try { const r = await post('/transactions/confirm-all', { month: f.all ? '' : state.month }); await refresh(); toast(`Confirmed ${r.confirmed}.`); } catch (e) { fail(e); } };
   if ($('#cards')) $('#cards').onclick = () => reviewCards();
   $('#add-tx').onclick = addTxDialog;
+  // bulk edit
+  const picked = () => $$('[data-pick]:checked').map(x => +x.dataset.pick);
+  const showBulk = () => { const n = picked().length; $('#bulk').style.display = n ? 'flex' : 'none'; $('#bulk-n').textContent = `${n} selected`; };
+  $$('[data-pick]').forEach(x => x.onchange = showBulk);
+  const bulk = async (body, done) => { const ids = picked(); try { for (const id of ids) await patch(`/transactions/${id}`, body); await refresh(); toast(done(ids.length)); } catch (e) { fail(e); } };
+  $('#bulk-cat').onchange = e => { const cid = +e.target.value; if (cid) bulk({ category_id: cid }, n => `Sorted ${n} as ${esc(catById(cid).name)}. It will remember.`); };
+  $('#bulk-hide').onclick = () => bulk({ hidden: true }, n => `Hid ${n} from budgets and reports.`);
+  $('#bulk-tag').onclick = () => { const t = prompt('Tag to put on the selected transactions:'); if (t) bulk({ tags: t.trim() }, n => `Tagged ${n}.`); };
+  $('#bulk-none').onclick = () => { $$('[data-pick]:checked').forEach(x => x.checked = false); showBulk(); };
 };
+function drill(cid, all = false) { state.f = { q: '', status: '', account: 0, category: cid, all }; state.tab = 'tx'; render(); window.scrollTo({ top: 0 }); }
 
 async function newCategory(after) {
   dialog('New category', `<label>Name<input class="in" id="nc-name"></label>
@@ -398,5 +409,5 @@ function ruleDialog(seed = {}) {
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
-  try { const s = await api('/session'); if (!s.name) return showLogin(); await refresh(); } catch (e) { fail(e); }
+  try { const s = await api('/session'); if (!s.name) { if (s.setup) { $('#app').innerHTML = `<div class="callout" style="margin-top:40px">${esc(s.setup)}</div>`; return; } return showLogin(); } await refresh(); } catch (e) { fail(e); }
 });

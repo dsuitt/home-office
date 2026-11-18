@@ -164,7 +164,9 @@ def pair_transfers(con) -> int:
         return 0
     open_in = con.execute(
         "SELECT t.id, t.account_id, t.date, t.amount_cents, a.grp, a.name FROM transactions t JOIN accounts a ON a.id=t.account_id "
-        "WHERE t.amount_cents>0 AND t.status<>'done' AND t.is_split=0 AND t.parent_id IS NULL AND t.reason NOT LIKE 'Other half%'"
+        "WHERE t.amount_cents>0 AND t.is_split=0 AND t.parent_id IS NULL AND t.reason NOT LIKE 'Other half%' "
+        # never override an inflow your own history already sorted (a paycheck that happens to equal a bill)
+        "AND (t.status IN ('needs_you','suggested') OR (t.status='auto' AND t.reason LIKE 'Payment received on the card%'))"
     ).fetchall()
     n = 0
     used: set[int] = set()

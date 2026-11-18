@@ -76,7 +76,8 @@ class Guess:
 
 
 _TRANSFER_WORDS = re.compile(r"\b(TRANSFER|XFER|TRNSFR|ZELLE TO SELF|ACH TRANSFER)\b", re.I)
-_CARD_PAY = re.compile(r"(EPAYMENT|E-PAYMENT|AUTOPAY|CARD PAYMENT|PAYMENT THANK YOU|PAYMENT - THANK|CRCARDPMT|ONLINE PAYMENT|CREDIT CRD)", re.I)
+_CARD_PAY = re.compile(r"(EPAYMENT|E-PAYMENT|CARD PAYMENT|CARD PMT|CRCARDPMT|CREDIT CRD|CARDMEMBER SERV|(AMEX|CHASE|CITI|DISCOVER|CAPITAL ONE|BARCLAY\w*|SYNCHRONY).{0,12}(PAYMENT|PMT|AUTOPAY))", re.I)
+_PAID_CARD = re.compile(r"(PAYMENT|AUTOPAY|PMT)", re.I)
 
 
 def _cat_id(name: str) -> int | None:
@@ -210,10 +211,12 @@ def guess(raw: str, merchant: str, mkey: str, amount_cents: int, account_id: int
     if hist and hist.status == "auto":
         return hist
     # Transfers are structural, so they outrank a weak suggestion but not your consistent history.
-    if _CARD_PAY.search(raw) and (account_grp == "credit" or amount_cents < 0):
-        cid = _cat_id("Credit card payment")
-        if cid:
-            return Guess(cid, "auto", "Card payment. Not counted as spending twice.")
+    card = _cat_id("Credit card payment")
+    if card and account_grp == "credit" and amount_cents > 0 and _PAID_CARD.search(raw):
+        return Guess(card, "auto", "Payment received on the card. Not counted as income.")
+    if card and amount_cents < 0 and account_grp != "credit" and _CARD_PAY.search(raw) and not hist:
+        # a guess from the wording; it becomes certain when the matching payment shows up on the card
+        return Guess(card, "suggested", "Looks like a card payment, which isn't counted as spending twice.")
     if _TRANSFER_WORDS.search(raw) and not hist:
         cid = _cat_id("Transfer between my accounts")
         if cid:

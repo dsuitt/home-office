@@ -1,7 +1,8 @@
 import os
 
 os.environ["MONEY_DB"] = ":memory:"
-os.environ["SECRET_KEY"] = "test-secret"
+os.environ["SECRET_KEY"] = "test-secret-long-enough"
+os.environ["ALLOW_NO_AUTH"] = "1"
 os.environ["PLAID_CLIENT_ID"] = "cid"
 os.environ["PLAID_SECRET"] = "sec"
 
@@ -327,3 +328,30 @@ def test_demo_seed_and_reports(api):
     assert any(r["mkey"] == "NETFLIX" for r in api.get("/api/bills").json()["recurring"])
     assert api.get("/api/export.csv").text.startswith("Date,Merchant")
     assert api.post("/api/demo/clear").status_code == 200 and api.get("/api/boot").json()["counts"]["n"] == 0
+
+
+def test_no_sign_in_means_this_computer_only(monkeypatch):
+    monkeypatch.delenv("ALLOW_NO_AUTH")
+    assert TestClient(app, client=("203.0.113.9", 5000)).get("/api/boot").status_code == 401
+    assert TestClient(app, client=("127.0.0.1", 5000)).get("/api/boot").status_code == 200
+
+
+def test_wording_alone_never_auto_sorts_a_bill_as_a_card_payment():
+    with db.tx() as con:
+        chk = con.execute("INSERT INTO accounts(name,grp) VALUES('Checking','cash')").lastrowid
+    t = tx(add_tx("MORTGAGE AUTOPAY WELLS", -2400, "2026-10-01", chk))
+    assert t["status"] == "needs_you"
+    t = tx(add_tx("CHASE CREDIT CRD AUTOPAY", -900, "2026-10-02", chk))
+    assert t["status"] == "suggested" and t["category_id"] == cat("Credit card payment")
+
+
+def test_pairing_leaves_a_paycheck_your_history_sorted(api):
+    with db.tx() as con:
+        chk = con.execute("INSERT INTO accounts(name,grp) VALUES('Checking','cash')").lastrowid
+        other = con.execute("INSERT INTO accounts(name,grp) VALUES('Joint','cash')").lastrowid
+    first = add_tx("PAYROLL ACME", 2400, "2026-09-15", chk)
+    api.patch(f"/api/transactions/{first}", json={"category_id": cat("Paycheck")})
+    pay = add_tx("PAYROLL ACME", 2400, "2026-10-01", chk)
+    add_tx("MORTGAGE AUTOPAY WELLS", -2400, "2026-10-01", other)
+    reports.after_ingest()
+    assert tx(pay)["category_id"] == cat("Paycheck")
